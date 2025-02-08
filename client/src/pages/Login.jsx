@@ -59,6 +59,7 @@ export default function Login() {
           {authError && <p className="text-red-500 text-center">{authError}</p>}
           {formFields.map((field, index) => (
             <input
+              key={index} 
               type={field.type}
               required
               placeholder={field.placeholder}

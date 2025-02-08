@@ -4,7 +4,7 @@ const Loading = () => {
   return (
     <>
       <div className="loader"></div>
-      <style jsx>{`
+      <style>{`
         .loader {
           width: 15px;
           aspect-ratio: 1;

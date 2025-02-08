@@ -6,7 +6,7 @@ import {
   DialogTitle,
   Switch,
 } from "@headlessui/react";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useRef, useState, useEffect } from "react";
 import { BiSearch, RiUserSearchLine, RxCross2, profile2 } from "../assets";
 import {
   createOneToOneChat,
@@ -15,7 +15,7 @@ import {
   createGroupChat,
 } from "../api";
 import { useChat } from "../context/ChatContext";
-import { requestHandler } from "../utils";
+import { requestHandler, LocalStorage } from "../utils";
 
 export function AddChat({ open }) {
   const [isGroupChat, setIsGroupChat] = useState(false);
@@ -41,6 +41,16 @@ export function AddChat({ open }) {
   // ref's
   const searchUserRef = useRef();
 
+  // NEW: Read the "groupChat" flag from LocalStorage when the modal opens.
+  useEffect(() => {
+    const groupFlag = LocalStorage.get("groupChat");
+    if (groupFlag) {
+      setIsGroupChat(true);
+    } else {
+      setIsGroupChat(false);
+    }
+  }, [openAddChat]);
+
   const handleClose = () => {
     setUsers([]);
     setNewChatUser(null);
@@ -49,7 +59,7 @@ export function AddChat({ open }) {
     setOpenAddChat(false);
   };
 
-  // search users for the adding into group
+  // search users for adding into group
   const handleSearchUser = async () => {
     const { data } = await getAvailableUsers(searchUserRef.current.value);
     setUsers(data.data?.users || []);
@@ -57,20 +67,17 @@ export function AddChat({ open }) {
 
   // create a new chat with a new user
   const createNewOneToOneChat = async () => {
-    if (!newChatUser) return alert("please select an user"); // if user not selected to create chat with
+    if (!newChatUser) return alert("please select an user");
 
     // handle the request to create a new chat
     await requestHandler(
-      () => createOneToOneChat(newChatUser?._id), // pass the userId to chat with
+      () => createOneToOneChat(newChatUser?._id),
       setCreatingChat,
       (res) => {
         const { data } = res;
-        // alert a message if chat already exists by seeing the flag field "existing"
         if (data?.existing) {
           return alert("chat already exists with the selected user");
         }
-
-        // if chat is created fetch all the updated current user chats
         getCurrentUserChats();
         setActiveLeftSidebar("recentChats");
         handleClose();
@@ -85,12 +92,10 @@ export function AddChat({ open }) {
     if (!groupName.trim()) {
       return alert("no group name provided");
     }
-
     // check for group chat participants
     if (!groupChatParticipants.length || groupChatParticipants.length < 2) {
       return alert("There must be atleast 2 members in the group");
     }
-
     await requestHandler(
       async () => createGroupChat(groupName, groupChatParticipants),
       setCreatingChat,
@@ -102,10 +107,11 @@ export function AddChat({ open }) {
       }
     );
   };
+
   return (
     <Transition show={openAddChat} as={Fragment}>
       <Dialog as="div" className="relative z-10" onClose={handleClose}>
-        <Transition
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -115,7 +121,7 @@ export function AddChat({ open }) {
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black/50 bg-opacity-75 transition-opacity" />
-        </Transition>
+        </TransitionChild>
 
         <div className="fixed inset-0 z-10 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
@@ -137,19 +143,7 @@ export function AddChat({ open }) {
                     >
                       Create chat
                     </DialogTitle>
-                    <div className="mt-2 flex items-center gap-2">
-                      <Switch
-                        checked={isGroupChat}
-                        onChange={setIsGroupChat}
-                        className="group inline-flex h-6 w-11 items-center rounded-full bg-gray-400 transition data-[checked]:bg-primary"
-                      >
-                        <span className="size-4 translate-x-1 rounded-full bg-white transition group-data-[checked]:translate-x-6" />
-                      </Switch>
-                      <span className="dark:text-slate-300 text-slate-500">
-                        Enable group chat
-                      </span>
-                    </div>
-
+                    {/* If not a group chat, show one-to-one chat confirmation */}
                     {!isGroupChat && (
                       <div className="mt-3">
                         <p className="text-lg font-medium dark:text-slate-50 text-slate-900">
@@ -159,6 +153,7 @@ export function AddChat({ open }) {
                       </div>
                     )}
 
+                    {/* If group chat, show group creation UI */}
                     {isGroupChat && (
                       <div className="w-full">
                         <div className="inputs mt-5">
@@ -282,9 +277,7 @@ export function AddChat({ open }) {
                   <button
                     type="button"
                     className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium mx-2 text-white shadow-sm hover:bg-blue-700 "
-                    onClick={
-                      isGroupChat ? createNewGroupChat : createNewOneToOneChat
-                    }
+                    onClick={isGroupChat ? createNewGroupChat : createNewOneToOneChat}
                   >
                     Create
                   </button>
