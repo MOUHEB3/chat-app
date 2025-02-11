@@ -48,7 +48,7 @@ const limiter: RateLimitRequestHandler = rateLimit({
   },
 });
 
-// Apply  the rate limiter to all routes
+// Apply the rate limiter to all routes
 app.use(limiter);
 
 // express app middlewares
@@ -90,8 +90,8 @@ const io = new SocketServer(httpServer, {
   },
 });
 
-// initialize the socker server
-initSocketIo(io);
+// initialize the socket server
+initSocketIo(io);  // You already have a function for this
 
 app.set("io", io); // using set method to mount 'io' instance on app
 

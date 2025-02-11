@@ -40,16 +40,16 @@ const signUp = asyncHandler(async (req: Request, res: Response) => {
       avatarUrl: `https://s3bucket.bytenode.xyz/staticbucketstorage/public/images/avatar${
         Math.floor(Math.random() * (40 - 1 + 1)) + 1
       }.avif`,
+      online: false,  // Ensure the user is offline when created
     } as User,
     RoleCode.USER
   );
 
   const tokens = await createTokens(user);
   const userData = await filterUserData(user);
-  const userDataWithStatus = { ...userData, isOnline: user.isOnline };
 
   new SuccessResponse("signup successful", {
-    user: userDataWithStatus,
+    user: userData,
     tokens,
   }).send(res);
 });
@@ -65,11 +65,10 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) throw new AuthFailureError("Invalid credentials");
 
-  // Update the user's online status
-  await UserModel.findByIdAndUpdate(user._id, { isOnline: true });
+  const { password: pass, ...filteredUser } = user;  // Removed the `status` field reference
 
-  const { password: pass, status, ...filteredUser } = user;
-  const filteredUserWithStatus = { ...filteredUser, isOnline: true };
+  // Set the user online when they log in
+  await userRepo.updateUserOnlineStatus(user._id, true); // Update the online status to true
 
   const tokens = await createTokens(user);
 
@@ -83,14 +82,16 @@ const login = asyncHandler(async (req: Request, res: Response) => {
     .cookie("refreshToken", tokens.refreshToken, options);
 
   new SuccessResponse("login successful", {
-    user: filteredUserWithStatus,
+    user: filteredUser,  // Returning filteredUser without status
     tokens,
   }).send(res);
 });
 
+
 const logout = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   if (req.user) {
-    await UserModel.findByIdAndUpdate(req.user._id, { isOnline: false });
+    // Set the user offline when they log out
+    await userRepo.updateUserOnlineStatus(req.user._id, false); // Update the online status to false
   }
 
   const options = {

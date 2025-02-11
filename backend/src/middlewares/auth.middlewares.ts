@@ -33,6 +33,9 @@ export const verifyJWT = asyncHandler(
 
       req.user = userData;
 
+      // Set the user as online when the JWT is verified (logged in)
+      await userRepo.updateUserOnlineStatus(userData._id, true);
+
       next();
     } catch (error) {
       if (error instanceof TokenExpiredError)

@@ -12,18 +12,18 @@ import { useSocket } from "../context/SocketContext"; // <-- Added import for on
 
 export default function ChatLeftSidebar({ activeLeftSidebar }) {
   const { setActiveLeftSidebar } = useChat();
-  const { onlineUsers } = useSocket(); // <-- Retrieve onlineUsers from context
+  const { userStatus } = useSocket(); // <-- Retrieve userStatus from context to check online/offline status
 
   const renderLeftSidebar = () => {
     switch (activeLeftSidebar) {
       case "profile":
-        return <ProfileSidebar onlineUsers={onlineUsers} />;
+        return <ProfileSidebar userStatus={userStatus} />;
       case "recentChats":
-        return <RecentChatsSidebar onlineUsers={onlineUsers} />;
+        return <RecentChatsSidebar userStatus={userStatus} />;
       case "searchUser":
-        return <SearchUserSidebar onlineUsers={onlineUsers} />;
+        return <SearchUserSidebar userStatus={userStatus} />;
       default:
-        return <ProfileSidebar onlineUsers={onlineUsers} />;
+        return <ProfileSidebar userStatus={userStatus} />;
     }
   };
 

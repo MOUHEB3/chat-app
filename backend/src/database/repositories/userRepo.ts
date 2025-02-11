@@ -113,7 +113,7 @@ const searchAvailableUsers = (
   currentUser: User,
   searchTermUsernameOrEmail: string
 ): Aggregate<any> => {
-  return UserModel.aggregate([
+  return UserModel.aggregate([  
     {
       $match: {
         _id: {
@@ -136,6 +136,18 @@ const searchAvailableUsers = (
   ]);
 };
 
+// Update user online status
+const updateUserOnlineStatus = async (
+  userId: Types.ObjectId,
+  onlineStatus: boolean
+): Promise<void> => {
+  await UserModel.findByIdAndUpdate(
+    userId,
+    { online: onlineStatus },  // Update the online field
+    { new: true }
+  ).lean();
+};
+
 export default {
   exists,
   findById,
@@ -147,4 +159,5 @@ export default {
   update,
   updateInfo,
   searchAvailableUsers,
+  updateUserOnlineStatus,  // Export the new method for updating online status
 };

@@ -35,6 +35,16 @@ const colorsUtils = {
         break;
     }
   },
+
+  // Log when a user goes online or offline
+  logUserStatusChange: (userId: string, status: string): void => {
+    const statusMessage = `User with ID: ${userId} is now ${status}`;
+    if (status === "online") {
+      colorsUtils.log("success", statusMessage);  // Log in green when the user is online
+    } else {
+      colorsUtils.log("info", statusMessage);  // Log in blue when the user is offline
+    }
+  },
 };
 
 export default colorsUtils;

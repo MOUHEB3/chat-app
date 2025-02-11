@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { RiArrowDropDownLine, RiArrowDropUpLine, profile } from "../assets";
+import { RiArrowDropDownLine, RiArrowDropUpLine } from "../assets";
 import { useAuth } from "../context/AuthContext";
 
-export default function ProfileSidebar({ onlineUsers }) {
+export default function ProfileSidebar() {
   const { user, logout } = useAuth();
 
   const colapseFieldValues = [
@@ -17,9 +17,6 @@ export default function ProfileSidebar({ onlineUsers }) {
   ];
 
   const [isColapsed, setIsColapsed] = useState(false);
-
-  // Determine online status based on onlineUsers prop if available
-  const isUserOnline = onlineUsers ? onlineUsers.has(user._id) : user.isOnline;
 
   return (
     <div className="w-[380px] md:w-screen h-full px-5 py-6">
@@ -39,19 +36,13 @@ export default function ProfileSidebar({ onlineUsers }) {
         </div>
 
         <div className="w-full flex flex-col items-center justify-center gap-3 my-10">
-          {/* Added relative wrapper and online indicator */}
+          {/* Removed the online/offline status indicator */}
           <div className="relative">
             <img
               className="size-32 rounded-full object-cover"
               src={user.avatarUrl}
               alt={user.username}
             />
-            {/* Online/Offline Indicator */}
-            <span
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                isUserOnline ? "bg-green-500" : "bg-gray-400"
-              }`}
-            ></span>
           </div>
           <p className="text-black font-medium text-xl dark:text-white">
             {user.username}
