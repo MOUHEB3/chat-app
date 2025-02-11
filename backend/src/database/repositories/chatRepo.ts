@@ -1,6 +1,12 @@
 import { PipelineStage, Types } from "mongoose";
 import User from "../model/User";
 import Chat, { ChatModel, UpdateChatFields } from "../model/Chat";
+
+// Helper function to convert a value to Types.ObjectId if necessary
+const toObjectId = (id: string | Types.ObjectId): Types.ObjectId => {
+  return typeof id === "string" ? new Types.ObjectId(id) : id;
+};
+
 // common aggregation pipeline functions to construct chat schema with common lookups
 const commonChatAggregation = (): PipelineStage[] => {
   return [
@@ -67,7 +73,6 @@ const commonChatAggregation = (): PipelineStage[] => {
 };
 
 // function retrieves an existing one-to-one chat between two users.
-
 const getExistingOneToOneChat = async (
   userId: Types.ObjectId,
   receiverId: Types.ObjectId
@@ -77,12 +82,8 @@ const getExistingOneToOneChat = async (
       $match: {
         isGroupChat: false,
         $and: [
-          {
-            participants: { $elemMatch: { $eq: userId } },
-          },
-          {
-            participants: { $elemMatch: { $eq: receiverId } },
-          },
+          { participants: { $elemMatch: { $eq: userId } } },
+          { participants: { $elemMatch: { $eq: receiverId } } },
         ],
       },
     },
@@ -117,47 +118,39 @@ const createNewGroupChat = (
 };
 
 // retrieve chat by chatId
-const getChatByChatId = (chatId: Types.ObjectId) => {
-  return ChatModel.findById(chatId).lean();
+const getChatByChatId = (chatId: string | Types.ObjectId) => {
+  return ChatModel.findById(toObjectId(chatId)).lean();
 };
 
-// retrieve a chat by chatId
-const getChatByChatIdAggregated = (chatId: Types.ObjectId): Promise<any> => {
+// retrieve a chat by chatId aggregated
+const getChatByChatIdAggregated = (chatId: string | Types.ObjectId): Promise<any> => {
   return ChatModel.aggregate([
-    {
-      $match: {
-        _id: chatId,
-      },
-    },
+    { $match: { _id: toObjectId(chatId) } },
     ...commonChatAggregation(),
   ]);
 };
 
 // get current user chats
-const getCurrentUserAllChats = (
-  currentUserId: Types.ObjectId
-): Promise<any> => {
+const getCurrentUserAllChats = (currentUserId: Types.ObjectId): Promise<any> => {
   return ChatModel.aggregate([
     {
       $match: {
-        participants: { $elemMatch: { $eq: currentUserId } }, // get all the chats of the current user
+        participants: { $elemMatch: { $eq: currentUserId } },
       },
     },
     {
-      $sort: {
-        updatedAt: -1,
-      },
+      $sort: { updatedAt: -1 },
     },
     ...commonChatAggregation(),
   ]);
 };
 
 // get aggregated groupChat
-const getAggregatedGroupChat = (chatId: Types.ObjectId): Promise<any> => {
+const getAggregatedGroupChat = (chatId: string | Types.ObjectId): Promise<any> => {
   return ChatModel.aggregate([
     {
       $match: {
-        _id: chatId,
+        _id: toObjectId(chatId),
         isGroupChat: true,
       },
     },
@@ -167,15 +160,15 @@ const getAggregatedGroupChat = (chatId: Types.ObjectId): Promise<any> => {
 
 // update the fields in the chat
 const updateChatFields = (
-  chatId: Types.ObjectId,
+  chatId: string | Types.ObjectId,
   queryFields: object
 ): Promise<any> => {
-  return ChatModel.findByIdAndUpdate(chatId, queryFields, { new: true });
+  return ChatModel.findByIdAndUpdate(toObjectId(chatId), queryFields, { new: true });
 };
 
 // delete a chat by id
-const deleteChatById = (chatId: Types.ObjectId): Promise<any> => {
-  return ChatModel.findByIdAndDelete(chatId);
+const deleteChatById = (chatId: string | Types.ObjectId): Promise<any> => {
+  return ChatModel.findByIdAndDelete(toObjectId(chatId));
 };
 
 export default {

@@ -17,6 +17,8 @@ import User from "../database/model/User";
 import { ProtectedRequest } from "../types/app-request";
 import { removeLocalFile } from "../helpers/utils";
 import messageRepo from "../database/repositories/messageRepo";
+// <-- New import for leave chat functionality -->
+import { leaveGroupChat } from "../database/model/Chat";
 
 // search available users
 const searchAvailableusers = asyncHandler(
@@ -59,14 +61,14 @@ const createOrGetExistingChat = asyncHandler(
       throw new BadRequestError("you cannot chat with yourself");
     }
 
-    // search a chats with partipants including user and receiver id
-    const chat = await chatRepo.getExistingOneToOneChat(
+    // search a chat with participants including user and receiver id
+    const chat = (await chatRepo.getExistingOneToOneChat(
       currentUserId,
       new Types.ObjectId(receiverId)
-    );
+    )) as any[]; // Added type assertion to fix the 'void' issue
 
-    // if chat found return it
-    if (chat.length) {
+    // if chat found return it (only if it is a one-to-one chat)
+    if (chat.length && chat[0].isGroupChat === false) {
       return new SuccessResponse("chat retrieved successfully", {
         existing: true,
         ...chat[0],
@@ -83,7 +85,7 @@ const createOrGetExistingChat = asyncHandler(
     const newChatId = newChatInstance._id;
 
     // structure the chat as per common aggregation
-    const createdChat = await chatRepo.getChatByChatIdAggregated(newChatId);
+    const createdChat = (await chatRepo.getChatByChatIdAggregated(newChatId)) as any[]; // Added type assertion to fix the 'void' issue
 
     if (!createdChat.length) {
       throw new InternalError(
@@ -95,7 +97,7 @@ const createOrGetExistingChat = asyncHandler(
     createdChat[0]?.participants?.forEach((participant: User) => {
       if (participant._id?.toString() === req.user?._id.toString()) return; // no need to emit event for current user
 
-      // emit socket event to other participants execpt the user
+      // emit socket event to other participants except the user
       emitSocketEvent(
         req,
         participant._id?.toString(),
@@ -154,7 +156,7 @@ const createGroupChat = asyncHandler(
     // get the aggregated chat
     const chatRes = await chatRepo.getAggregatedGroupChat(createdGroupChat._id);
 
-    // aggreate method return results in an array
+    // aggregate method returns results in an array
     const groupChat = chatRes[0];
 
     // emit socket to all participants about the new group chat
@@ -210,7 +212,7 @@ const addNewUserToGroup = asyncHandler(
       throw new BadRequestError("no chatId provided");
     }
 
-    // check if groupchat exists
+    // check if group chat exists
     const existingGroupChat = await chatRepo.getChatByChatId(
       new Types.ObjectId(chatId)
     );
@@ -226,7 +228,7 @@ const addNewUserToGroup = asyncHandler(
 
     const existingParticipants = existingGroupChat.participants;
 
-    // check if new participants exists in the group
+    // check if new participant exists in the group
     if (
       existingParticipants.some(
         (participant) => participant.toString() === newParticipantId
@@ -256,6 +258,35 @@ const addNewUserToGroup = asyncHandler(
     ).send(res);
   }
 );
+
+/* ------------------ New Leave Chat Functionality ------------------ */
+/**
+ * leaveChat
+ *
+ * Controller function that allows a user to leave a group chat.
+ * It uses the leaveGroupChat helper to remove the user from the chat and emits a socket event to the remaining participants.
+ */
+const leaveChat = asyncHandler(async (req: ProtectedRequest, res: Response) => {
+  const { chatId } = req.params;
+  const currentUserId = req.user?._id;
+  if (!currentUserId) {
+    throw new AuthFailureError("User not authenticated");
+  }
+  // Convert currentUserId to string since it's a Types.ObjectId
+  const updatedChat = await leaveGroupChat(chatId, currentUserId.toString());
+  // Emit socket event to the remaining participants that the user has left
+  updatedChat.participants.forEach((participant: any) => {
+    if (participant.toString() === currentUserId.toString()) return;
+    emitSocketEvent(
+      req,
+      participant.toString(),
+      ChatEventEnum.LEAVE_CHAT_EVENT,
+      updatedChat
+    );
+  });
+  return new SuccessResponse("Left group chat successfully", updatedChat).send(res);
+});
+/* ---------------- End of New Leave Chat Functionality -------------- */
 
 // delete oneToOne chat
 const deleteChat = asyncHandler(
@@ -317,8 +348,6 @@ const deleteChat = asyncHandler(
     // emit socket events to all participants of current deleted chat
     existingChat.participants.forEach((participantId) => {
       if (participantId.toString() === currentUserId.toString()) return;
-
-      // emit socket event to rest of the users
       emitSocketEvent(
         req,
         participantId.toString(),
@@ -338,5 +367,6 @@ export {
   createGroupChat,
   getGroupChatDetails,
   addNewUserToGroup,
+  leaveChat, 
   deleteChat,
 };

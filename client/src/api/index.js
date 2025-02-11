@@ -1,5 +1,4 @@
 import axios from "axios";
-import { LocalStorage } from "../utils";
 // import FormData from "form-data";
 
 // Axios instance for API requests
@@ -11,10 +10,14 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    // retrieve user token from localStorage
-    const token = LocalStorage.get("token");
-    // set authorization header with bearer
-    config.headers.Authorization = `Bearer ${token}`;
+    // Retrieve token from localStorage
+    const token = localStorage.getItem("token");
+
+    // Ensure token is valid before setting Authorization header
+    if (token && token !== "null" && token !== "undefined") {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
     return config;
   },
   (err) => Promise.reject(err)
@@ -36,27 +39,25 @@ export const getAvailableUsers = (usernameOrEmail) => {
   return apiClient.get(`/api/chat/users?userId=${usernameOrEmail}`);
 };
 
-// create a new one-to-one chat
-// Updated: receiverId is now passed as a URL parameter to match the backend route.
+// Create a new one-to-one chat
 export const createOneToOneChat = (receiverId) => {
-  // Ensure that a valid receiverId is passed and return the promise as-is.
   if (!receiverId) {
     return Promise.reject(new Error("Receiver ID is required"));
   }
   return apiClient.post(`/api/chat/c/${receiverId}`);
 };
 
-// get all the current user chats
+// Get all the current user chats
 export const getAllcurrentUserChats = () => {
   return apiClient.get("/api/chat");
 };
 
-// get chat messages
+// Get chat messages
 export const getChatMessages = (chatId) => {
   return apiClient.get(`/api/messages/${chatId}`);
 };
 
-// send a message
+// Send a message
 export const sendMessage = (chatId, content, attachments) => {
   const formData = new FormData();
   if (content) {
@@ -64,7 +65,7 @@ export const sendMessage = (chatId, content, attachments) => {
   }
 
   if (attachments) {
-    attachments?.map((file) => {
+    attachments.forEach((file) => {
       formData.append("attachments", file);
     });
   }
@@ -72,26 +73,22 @@ export const sendMessage = (chatId, content, attachments) => {
   return apiClient.post(`/api/messages/${chatId}`, formData);
 };
 
-// create group chat
+// Create group chat
 export const createGroupChat = (name, participants) => {
-  const body = {
-    name,
-    participants,
-  };
-  return apiClient.post("/api/chat/group", body);
+  return apiClient.post("/api/chat/group", { name, participants });
 };
 
-// delete a message
+// Delete a message
 export const deleteMessage = (messageId) => {
   return apiClient.delete(`/api/messages/${messageId}`);
 };
 
-// delete a chat
+// Delete a chat
 export const deleteChat = (chatId) => {
   return apiClient.delete(`/api/chat/${chatId}`);
 };
 
-// NEW: leave a group chat
+// Leave a group chat
 export const leaveGroupChat = (chatId) => {
   return apiClient.patch(`/api/chat/group/${chatId}/leave`);
 };

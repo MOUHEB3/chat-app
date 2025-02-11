@@ -11,6 +11,7 @@ export default interface User {
   avatarUrl?: string;
   bio?: string;
   status?: boolean;
+  isOnline?: boolean; // <-- New field for online status
   roles: Role[];
   createdAt?: Date;
   updatedAt?: Date;
@@ -56,6 +57,11 @@ const schema = new Schema<User>({
   status: {
     type: Schema.Types.Boolean,
     default: true,
+  },
+
+  isOnline: {  // <-- New field added
+    type: Schema.Types.Boolean,
+    default: false,
   },
 
   roles: {

@@ -3,12 +3,18 @@ import asyncHandler from "../helpers/asyncHandler";
 import userRepo from "../database/repositories/userRepo";
 import { AuthFailureError, BadRequestError } from "../core/ApiError";
 import { RoleCode } from "../database/model/Role";
+import { UserModel } from "../database/model/User";
 import User from "../database/model/User";
 import bcrypt from "bcrypt";
 import { createTokens } from "./auth/authUtils";
 import { filterUserData } from "../helpers/utils";
 import { SuccessResponse } from "../core/ApiResponse";
 import { cookieValidity, environment, tokenInfo } from "../config";
+
+// Extend Express Request type to include `user`
+interface AuthenticatedRequest extends Request {
+  user?: User;
+}
 
 const signUp = asyncHandler(async (req: Request, res: Response) => {
   const { email, username, password } = req.body;
@@ -32,7 +38,6 @@ const signUp = asyncHandler(async (req: Request, res: Response) => {
       email,
       password: hashedPassword,
       avatarUrl: `https://s3bucket.bytenode.xyz/staticbucketstorage/public/images/avatar${
-        // random number between 0 and 40
         Math.floor(Math.random() * (40 - 1 + 1)) + 1
       }.avif`,
     } as User,
@@ -41,9 +46,10 @@ const signUp = asyncHandler(async (req: Request, res: Response) => {
 
   const tokens = await createTokens(user);
   const userData = await filterUserData(user);
+  const userDataWithStatus = { ...userData, isOnline: user.isOnline };
 
   new SuccessResponse("signup successful", {
-    user: userData,
+    user: userDataWithStatus,
     tokens,
   }).send(res);
 });
@@ -59,8 +65,11 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) throw new AuthFailureError("Invalid credentials");
 
-  // just renamed the password to pass "password" var is used before
+  // Update the user's online status
+  await UserModel.findByIdAndUpdate(user._id, { isOnline: true });
+
   const { password: pass, status, ...filteredUser } = user;
+  const filteredUserWithStatus = { ...filteredUser, isOnline: true };
 
   const tokens = await createTokens(user);
 
@@ -69,18 +78,21 @@ const login = asyncHandler(async (req: Request, res: Response) => {
     secure: environment === "production",
   };
 
-  // attach the cookies to res object
   res
     .cookie("accessToken", tokens.accessToken, options)
     .cookie("refreshToken", tokens.refreshToken, options);
 
   new SuccessResponse("login successful", {
-    user: filteredUser,
+    user: filteredUserWithStatus,
     tokens,
   }).send(res);
 });
 
-const logout = asyncHandler(async (req: Request, res: Response) => {
+const logout = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user) {
+    await UserModel.findByIdAndUpdate(req.user._id, { isOnline: false });
+  }
+
   const options = {
     httpOnly: true,
     secure: environment === "production",

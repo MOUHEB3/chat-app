@@ -64,3 +64,38 @@ const schema = new Schema<Chat>({
 });
 
 export const ChatModel = model<Chat>(DOCUMENT_NAME, schema);
+
+
+
+/** 
+ * leaveGroupChat
+ *
+ * This helper function finds a chat by its ID, verifies that it is a group chat,
+ * and removes the specified user from the participants list.
+ *
+ * @param {string} chatId - The ID of the chat.
+ * @param {string} userId - The ID of the user who is leaving.
+ * @returns {Promise<Chat>} - The updated chat document.
+ * @throws {Error} - If the chat is not found or if it's not a group chat.
+ */
+export const leaveGroupChat = async (chatId: string, userId: string) => {
+  // Find the chat by its ID
+  const chat = await ChatModel.findById(chatId);
+  if (!chat) {
+    throw new Error("Chat not found");
+  }
+
+  // Ensure the chat is a group chat
+  if (!chat.isGroupChat) {
+    throw new Error("Not a group chat");
+  }
+
+  // Remove the user from the participants array
+  chat.participants = chat.participants.filter(
+    (participant) => participant.toString() !== userId
+  );
+
+  // Save and return the updated chat
+  await chat.save();
+  return chat;
+};

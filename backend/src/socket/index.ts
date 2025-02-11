@@ -1,5 +1,6 @@
 import cookie from "cookie";
 import User from "../database/model/User";
+import { UserModel } from "../database/model/User";  // <-- New import for updating user status
 import { Namespace, Socket } from "socket.io";
 import { ChatEventEnum } from "../constants";
 import { Server } from "http";
@@ -16,29 +17,29 @@ declare module "socket.io" {
   }
 }
 
-// handles the join chat event ie; when a user join a room
+// handles the join chat event i.e. when a user joins a room
 const mountJoinChatEvent = (socket: Socket): void => {
   socket.on(ChatEventEnum.JOIN_CHAT_EVENT, (chatId: string) => {
     colorsUtils.log("info", "user joined a chat room. chatId: " + chatId);
-    socket.join(chatId); // join the user to a chat between or group chat
+    socket.join(chatId); // join the user to a one-to-one or group chat room
   });
 };
 
-// handle the start Typing event
+// handle the start typing event
 const mountStartTypingEvent = (socket: Socket): void => {
   socket.on(ChatEventEnum.START_TYPING_EVENT, (chatId: string) => {
     socket.in(chatId).emit(ChatEventEnum.START_TYPING_EVENT, chatId);
   });
 };
 
-// handle the stop Typing event
+// handle the stop typing event
 const mountStopTypingEvent = (socket: Socket): void => {
   socket.on(ChatEventEnum.STOP_TYPING_EVENT, (chatId: string) => {
     socket.in(chatId).emit(ChatEventEnum.STOP_TYPING_EVENT, chatId);
   });
 };
 
-// function to initialize the socket io
+// function to initialize the socket.io
 const initSocketIo = (io: any): void => {
   io.on("connection", async (socket: Socket) => {
     try {
@@ -64,22 +65,32 @@ const initSocketIo = (io: any): void => {
 
       socket.user = user;
       socket.join(user._id.toString());
+
+      // Update online status to true upon connection
+      await UserModel.findByIdAndUpdate(user._id, { isOnline: true });
+
+      // Notify other users about the online status
+      io.emit("updateUserStatus", { userId: user._id.toString(), status: "online" });
+
       socket.emit(ChatEventEnum.CONNECTED_EVENT);
-      colorsUtils.log(
-        "info",
-        "🤝 User connected. userId: " + user._id.toString()
-      );
+      colorsUtils.log("info", "🤝 User connected. userId: " + user._id.toString());
 
       mountJoinChatEvent(socket);
       mountStartTypingEvent(socket);
       mountStopTypingEvent(socket);
 
-      // disconnect event
-      socket.on(ChatEventEnum.DISCONNECTED_EVENT, () => {
+      // disconnect event: update online status to offline and notify clients
+      socket.on("disconnect", async () => {
         if (socket.user?._id) {
+          await UserModel.findByIdAndUpdate(socket.user._id, { isOnline: false });
+
+          // Notify other users about the offline status
+          io.emit("updateUserStatus", { userId: socket.user._id.toString(), status: "offline" });
+
           socket.leave(socket.user._id.toString());
         }
       });
+      
     } catch (error) {
       socket.emit(
         ChatEventEnum.SOCKET_ERROR_EVENT,

@@ -1,20 +1,22 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { LocalStorage } from "../utils";
 import socketio from "socket.io-client";
 
-// method to establish a socket connection
+// Method to establish a socket connection
 const getSocket = () => {
-  const token = LocalStorage.get("token"); // get token from local storage
-  // create a socket connection with the provided URI and authentication
+  const token = LocalStorage.get("token"); // Get token from local storage
   return socketio(import.meta.env.VITE_SOCKET_URI, {
     withCredentials: true,
     auth: { token },
+    reconnection: true, // ✅ Enables automatic reconnection
+    reconnectionAttempts: 5, // ✅ Limits reconnection attempts
+    reconnectionDelay: 3000, // ✅ 3s delay before trying to reconnect
   });
 };
 
 const SocketContext = createContext({ socket: null, isConnected: false });
 
-// custom hook to access socket instance from context
+// Custom hook to access socket instance from context
 const useSocket = () => useContext(SocketContext);
 
 const socketEvents = {
@@ -33,44 +35,45 @@ const socketEvents = {
 };
 
 const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
 
-  useEffect(() => {
-    const socketInstance = getSocket();
-    setSocket(socketInstance);
+  const connectSocket = useCallback(() => {
+    if (!socketRef.current) {
+      socketRef.current = getSocket();
 
-    // Listen for connection and disconnection events to update connection status
-    socketInstance.on("connect", () => setIsConnected(true));
-    socketInstance.on("disconnect", () => setIsConnected(false));
+      // ✅ Proper event handling with cleanup
+      socketRef.current.on("connect", () => setIsConnected(true));
+      socketRef.current.on("disconnect", () => setIsConnected(false));
 
-    // Listen for online/offline status updates from the server using "updateUserStatus" event
-    socketInstance.on("updateUserStatus", ({ userId, status }) => {
-      if (status === "online") {
-        setOnlineUsers((prev) => new Set(prev).add(userId));
-      } else if (status === "offline") {
+      socketRef.current.on("updateUserStatus", ({ userId, status }) => {
         setOnlineUsers((prev) => {
           const updatedUsers = new Set(prev);
-          updatedUsers.delete(userId);
+          status === "online" ? updatedUsers.add(userId) : updatedUsers.delete(userId);
           return updatedUsers;
         });
-      }
-    });
-
-    // Disconnect socket when component unmounts
-    return () => {
-      if (socketInstance) {
-        socketInstance.off("connect");
-        socketInstance.off("disconnect");
-        socketInstance.off("updateUserStatus");
-        socketInstance.disconnect();
-      }
-    };
+      });
+    }
   }, []);
 
+  const disconnectSocket = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.off("connect");
+      socketRef.current.off("disconnect");
+      socketRef.current.off("updateUserStatus");
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    connectSocket();
+    return () => disconnectSocket();
+  }, [connectSocket, disconnectSocket]);
+
   return (
-    <SocketContext.Provider value={{ socket, socketEvents, isConnected, onlineUsers }}>
+    <SocketContext.Provider value={{ socket: socketRef.current, socketEvents, isConnected, onlineUsers, connectSocket, disconnectSocket }}>
       {children}
     </SocketContext.Provider>
   );
