@@ -3,8 +3,8 @@ import { profile } from "../assets";
 import { useAuth } from "../context/AuthContext";
 import { getChatObjectMetadata, limitChar } from "../utils";
 
-export default function RecentUserChatCard({ chat, onClick, isActive }) {
-  // usercontext
+export default function RecentUserChatCard({ chat, onClick, isActive, opponentOnline }) {
+  // user context
   const { user } = useAuth();
 
   const filteredChat = getChatObjectMetadata(chat, user); // filter the chat object metadata
@@ -12,7 +12,7 @@ export default function RecentUserChatCard({ chat, onClick, isActive }) {
   return (
     <div
       onClick={() => onClick(chat)}
-      className={`flex gap-2 p-4 my-1 rounded-md hover:bg-backgroundLight3  dark:hover:bg-backgroundDark1 ${
+      className={`flex gap-2 p-4 my-1 rounded-md hover:bg-backgroundLight3 dark:hover:bg-backgroundDark1 ${
         isActive ? "bg-backgroundLight3 dark:bg-backgroundDark1 " : ""
       } items-center w-full cursor-pointer`}
     >
@@ -24,7 +24,7 @@ export default function RecentUserChatCard({ chat, onClick, isActive }) {
                 key={participant._id}
                 src={participant.avatarUrl}
                 loading="lazy"
-                className={`w-10 h-10  border-white rounded-full absolute outline outline-3 outline-black ${
+                className={`w-10 h-10 border-white rounded-full absolute outline outline-3 outline-black ${
                   i === 0
                     ? "left-0 z-30"
                     : i === 1
@@ -38,19 +38,23 @@ export default function RecentUserChatCard({ chat, onClick, isActive }) {
           })}
         </div>
       ) : (
-        <img
-          className="size-12 rounded-full object-cover"
-          src={filteredChat.avatar}
-          alt=""
-          loading="lazy"
-        />
+        <div className="relative mr-2">
+          <img
+            className="size-12 rounded-full object-cover"
+            src={filteredChat.avatar}
+            alt=""
+            loading="lazy"
+          />
+          <span
+            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+              opponentOnline ? "bg-green-500" : "bg-gray-400"
+            }`}
+          ></span>
+        </div>
       )}
 
-      <div className=" w-full">
-        <div
-          className="flex items-center
-        justify-between"
-        >
+      <div className="w-full">
+        <div className="flex items-center justify-between">
           <div>
             <p className="font-medium text-base text-slate-700 dark:text-slate-100">
               {filteredChat.title}
@@ -61,10 +65,10 @@ export default function RecentUserChatCard({ chat, onClick, isActive }) {
               ? moment(chat.lastMessage?.createdAt)
                   .add("TIME_ZONE", "hours")
                   .fromNow(true) + " ago"
-              : ""}{" "}
+              : ""}
           </div>
         </div>
-        <div className=" w-full flex items-center justify-between">
+        <div className="w-full flex items-center justify-between">
           <div className="text-sm text-slate-500 dark:text-slate-400">
             {limitChar(filteredChat.lastMessage, 25)}
           </div>

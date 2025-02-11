@@ -36,19 +36,24 @@ export const getAvailableUsers = (usernameOrEmail) => {
   return apiClient.get(`/api/chat/users?userId=${usernameOrEmail}`);
 };
 
-// create a new one to one chat
+// create a new one-to-one chat
+// Updated: receiverId is now passed as a URL parameter to match the backend route.
 export const createOneToOneChat = (receiverId) => {
-  return apiClient.post(`api/chat/c/${receiverId}`);
+  // Ensure that a valid receiverId is passed and return the promise as-is.
+  if (!receiverId) {
+    return Promise.reject(new Error("Receiver ID is required"));
+  }
+  return apiClient.post(`/api/chat/c/${receiverId}`);
 };
 
 // get all the current user chats
 export const getAllcurrentUserChats = () => {
-  return apiClient.get("api/chat");
+  return apiClient.get("/api/chat");
 };
 
 // get chat messages
 export const getChatMessages = (chatId) => {
-  return apiClient.get(`api/messages/${chatId}`);
+  return apiClient.get(`/api/messages/${chatId}`);
 };
 
 // send a message
@@ -64,7 +69,7 @@ export const sendMessage = (chatId, content, attachments) => {
     });
   }
 
-  return apiClient.post(`api/messages/${chatId}`, formData);
+  return apiClient.post(`/api/messages/${chatId}`, formData);
 };
 
 // create group chat
@@ -73,17 +78,22 @@ export const createGroupChat = (name, participants) => {
     name,
     participants,
   };
-  return apiClient.post("api/chat/group", body);
+  return apiClient.post("/api/chat/group", body);
 };
 
 // delete a message
 export const deleteMessage = (messageId) => {
-  return apiClient.delete(`api/messages/${messageId}`);
+  return apiClient.delete(`/api/messages/${messageId}`);
 };
 
 // delete a chat
 export const deleteChat = (chatId) => {
-  return apiClient.delete(`api/chat/${chatId}`);
+  return apiClient.delete(`/api/chat/${chatId}`);
+};
+
+// NEW: leave a group chat
+export const leaveGroupChat = (chatId) => {
+  return apiClient.patch(`/api/chat/group/${chatId}/leave`);
 };
 
 export default apiClient;

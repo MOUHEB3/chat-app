@@ -12,6 +12,7 @@ import {
   getAllcurrentUserChats,
   getChatMessages,
   sendMessage,
+  createOneToOneChat, // API call for one-to-one chat
 } from "../api";
 import { requestHandler } from "../utils";
 import { useSocket } from "./SocketContext";
@@ -42,6 +43,41 @@ export const ChatProvider = ({ children }) => {
   const currentSelectedChat = useRef();
 
   const { socket, socketEvents } = useSocket();
+
+  // NEW FUNCTION: Create a one-to-one chat
+  const createOneToOneChatHandler = async (userId) => {
+    try {
+      // Check if a one-to-one chat with this user already exists
+      const existingChat = currentUserChats.find((chat) => {
+        // Assuming that one-to-one chats have exactly 2 members
+        // and that the chat object contains a "members" array of user IDs
+        return (
+          chat.members &&
+          chat.members.length === 2 &&
+          chat.members.includes(userId)
+        );
+      });
+      if (existingChat) {
+        alert("Chat already exists!");
+        return existingChat;
+      }
+      // If no existing chat, create a new one via the API
+      const response = await createOneToOneChat(userId);
+      // Extract the chat data (handle a possible nested 'data' property)
+      const chatData = response.data?.data ? response.data.data : response.data;
+      setCurrentUserChats((prevChats) => {
+        const exists = prevChats.find((chat) => chat._id === chatData._id);
+        if (!exists) {
+          return [chatData, ...prevChats];
+        }
+        return prevChats;
+      });
+      return chatData;
+    } catch (error) {
+      console.error("Error creating one-to-one chat:", error);
+      throw error;
+    }
+  };
 
   // get the current user chats
   const getCurrentUserChats = () => {
@@ -79,12 +115,9 @@ export const ChatProvider = ({ children }) => {
   // update last message of the current selected chat with new message
   const updateLastMessageOfCurrentChat = (chatId, message) => {
     const updatedChat = currentUserChats?.find((chat) => chat._id === chatId);
-
     if (!updatedChat) return;
-
     updatedChat.lastMessage = message;
     updatedChat.updatedAt = message?.updatedAt;
-
     setCurrentUserChats((prevChats) =>
       prevChats.map((chat) => (chat._id === chatId ? updatedChat : chat))
     );
@@ -112,22 +145,18 @@ export const ChatProvider = ({ children }) => {
       )
     )
       return;
-
     const currentSelectedChatId = currentSelectedChat.current?._id;
     // set the current selected chat to null
     currentSelectedChat.current = null;
-
     // remove the chat from the current user chats
     setCurrentUserChats((prevChats) =>
       prevChats.filter((chat) => chat._id !== currentSelectedChatId)
     );
-
     // remove the messages of the deleted chat
     setMessages((prevMessages) =>
       prevMessages.filter((message) => message.chat !== currentSelectedChatId)
     );
-
-    // request the server to delete the sected chat
+    // request the server to delete the selected chat
     await requestHandler(
       async () => await deleteChat(chatId),
       null,
@@ -138,8 +167,12 @@ export const ChatProvider = ({ children }) => {
 
   // send message
   const sendChatMessage = async () => {
+    // Prevent sending an empty message if both text and attachments are empty
+    if (!message.trim() && (!attachments || attachments.length === 0)) {
+      alert("Cannot send an empty message.");
+      return;
+    }
     if (!socket || !currentSelectedChat.current?._id) return;
-
     await requestHandler(
       async () =>
         await sendMessage(
@@ -152,7 +185,6 @@ export const ChatProvider = ({ children }) => {
         setMessage("");
         setAttachments([]);
         setMessages((prevMsgs) => [...prevMsgs, res.data]);
-
         // update the last message of the chat
         updateLastMessageOfCurrentChat(
           currentSelectedChat.current?._id,
@@ -164,11 +196,7 @@ export const ChatProvider = ({ children }) => {
   };
 
   // handle on message received event from server
-  // ie when a new message is sent to the server and the server sends a event to participants of chat with current message
-
-  // const onMessageReceived = useCallback(message) => {
   const onMessageReceived = (message) => {
-    // add the unread message count here
     // update the messages array when a new message event received from the server
     if (currentSelectedChat.current?._id === message.chat) {
       setMessages((prevMsgs) => [...prevMsgs, message]);
@@ -176,33 +204,19 @@ export const ChatProvider = ({ children }) => {
     // update the last message of the current chat
     updateLastMessageOfCurrentChat(message.chat, message);
   };
-  // ,
-  // [messages, currentUserChats]
 
   // handle when a message is deleted
   const onMessageDeleted = useCallback(
     (payload) => {
       setMessages((prevMsgs) =>
         prevMsgs.filter(
-          (msg) => msg._id.toString() !== payload.messageId.toString()
+          (msg) =>
+            msg._id.toString() !== payload.messageId.toString()
         )
       );
     },
     [messages, currentUserChats]
   );
-
-  // handle searching users
-  // const searchUsers = async (query) => {
-  //   requestHandler(
-  //     async () => await apiClient.get(`api/users/search/${query}`),
-  //     null,
-  //     (res) => {
-  //       const { data } = res;
-  //       setSearchedUsers(data || []);
-  //     },
-  //     alert
-  //   );
-  // };
 
   // handle removing file from attachments
   const removeFileFromAttachments = (index) => {
@@ -212,15 +226,22 @@ export const ChatProvider = ({ children }) => {
     ]);
   };
 
+  // -----------------------------------------------------------------------
+  // NEW FUNCTION: Remove chat from the current user chats state immediately
+  const removeChatFromList = (chatId) => {
+    setCurrentUserChats((prevChats) =>
+      prevChats.filter((chat) => chat._id !== chatId)
+    );
+  };
+  // -----------------------------------------------------------------------
+
   useEffect(() => {
     if (!socket) return;
-
     // setup all the listeners for the socket events from server
     socket.on(socketEvents.CONNECTED_EVENT, () => setIsConnected(true));
     socket.on(socketEvents.DISCONNECT_EVENT, () => setIsConnected(false));
     socket.on(socketEvents.MESSAGE_RECEIVED_EVENT, onMessageReceived);
     socket.on(socketEvents.MESSAGE_DELETE_EVENT, onMessageDeleted);
-
     return () => {
       // remove all the listeners for the socket events
       socket.off(socketEvents.CONNECTED_EVENT);
@@ -261,6 +282,9 @@ export const ChatProvider = ({ children }) => {
         deleteUserChat,
         isChatSelected,
         setIsChatSelected,
+        removeChatFromList,
+        // Expose our new one-to-one chat creation function with the desired behavior:
+        createOneToOneChat: createOneToOneChatHandler,
       }}
     >
       {children}

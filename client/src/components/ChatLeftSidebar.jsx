@@ -4,20 +4,26 @@ import RecentChatsSidebar from "./RecentChatsSidebar";
 import SearchUserSidebar from "./SearchUserSidebar";
 import SideMenu from "./SideMenu";
 import { useChat } from "../context/ChatContext";
+import { useSocket } from "../context/SocketContext"; // <-- Added import for online status
+
+// NOTE: To display each user's online/offline status,
+// ensure that your child components (ProfileSidebar, RecentChatsSidebar, SearchUserSidebar)
+// render an online indicator (e.g. a small dot) based on each user's isOnline property.
 
 export default function ChatLeftSidebar({ activeLeftSidebar }) {
   const { setActiveLeftSidebar } = useChat();
+  const { onlineUsers } = useSocket(); // <-- Retrieve onlineUsers from context
 
   const renderLeftSidebar = () => {
     switch (activeLeftSidebar) {
       case "profile":
-        return <ProfileSidebar />;
+        return <ProfileSidebar onlineUsers={onlineUsers} />;
       case "recentChats":
-        return <RecentChatsSidebar />;
+        return <RecentChatsSidebar onlineUsers={onlineUsers} />;
       case "searchUser":
-        return <SearchUserSidebar />;
+        return <SearchUserSidebar onlineUsers={onlineUsers} />;
       default:
-        return <ProfileSidebar />;
+        return <ProfileSidebar onlineUsers={onlineUsers} />;
     }
   };
 

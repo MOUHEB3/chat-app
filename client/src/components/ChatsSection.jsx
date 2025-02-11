@@ -15,6 +15,7 @@ import {
   PiDownloadSimpleBold,
   RxCross2,
 } from "../assets";
+import { FaSignOutAlt } from "react-icons/fa"; // Added logout icon import
 import { useChat } from "../context/ChatContext";
 import { useAuth } from "../context/AuthContext";
 import moment from "moment";
@@ -23,6 +24,7 @@ import { getOpponentParticipant, limitChar } from "../utils";
 import OutsideClickHandler from "react-outside-click-handler";
 import { useConnectWebRtc } from "../context/WebRtcContext";
 import ViewImage from "./ViewImage";
+import { leaveGroupChat } from "../api"; // <-- Added leaveGroupChat import
 
 const MessageCont = ({ isOwnMessage, isGroupChat, message }) => {
   const { deleteChatMessage } = useChat();
@@ -35,22 +37,23 @@ const MessageCont = ({ isOwnMessage, isGroupChat, message }) => {
     setCurrentImageUrl(url);
     setIsOpenView(true);
   };
+
   return (
-    <div className={`w-auto flex my-2 `}>
+    <div className={`w-auto flex my-2`}>
       <div
-        className={`flex  ${
+        className={`flex ${
           isOwnMessage ? "max-w-[50%] md:max-w-[85%] ml-auto " : "mr-auto"
         }`}
       >
         <div
-          className={`flex flex-col  justify-center relative dark:bg-opacity-20 dark:bg-primary min-w-[120px] max-w-full bg-backgroundLight3  p-2 md:p-1 rounded-xl ${
+          className={`flex flex-col justify-center relative dark:bg-opacity-20 dark:bg-primary min-w-[120px] max-w-full bg-backgroundLight3 p-2 md:p-1 rounded-xl ${
             isOwnMessage ? "rounded-br-none" : "rounded-bl-none"
           } mb-5 ${isOwnMessage ? "order-2" : "order-1"}`}
         >
           {message.attachments?.length ? (
             <div className="flex gap-1 flex-wrap">
               {message.attachments?.map((file) => (
-                <div className="flex flex-col">
+                <div className="flex flex-col" key={file.url}>
                   <div>
                     {(() => {
                       const fileExtension = file.url
@@ -67,7 +70,6 @@ const MessageCont = ({ isOwnMessage, isGroupChat, message }) => {
                         "gif",
                         "svg",
                       ].includes(fileExtension);
-
                       if (isImage) {
                         return (
                           <img
@@ -92,7 +94,6 @@ const MessageCont = ({ isOwnMessage, isGroupChat, message }) => {
                         );
                       }
                     })()}
-
                     {isOpenView && (
                       <ViewImage
                         openView={isOpenView}
@@ -123,14 +124,10 @@ const MessageCont = ({ isOwnMessage, isGroupChat, message }) => {
           ) : (
             ""
           )}
-          <p className="p-2 md:p-2 text-base md:text-md text-slate-900 dark:text-slate-100 ">
+          <p className="p-2 md:p-2 text-base md:text-md text-slate-900 dark:text-slate-100">
             {message.content}
           </p>
-
-          <div className="flex items-center gap-1 text-xs text-slate-400 absolute bottom-0 right-1 ">
-            {/* <span>
-              <LuClock3 />
-            </span> */}
+          <div className="flex items-center gap-1 text-xs text-slate-400 absolute bottom-0 right-1">
             <span className="text-[10px]">
               {moment(message.createdAt)
                 .add("TIME_ZONE", "hours")
@@ -140,9 +137,9 @@ const MessageCont = ({ isOwnMessage, isGroupChat, message }) => {
           </div>
         </div>
         <div
-          className={`mx-3 md:mx-0 ${isOwnMessage ? "order-1" : "order-2"} `}
+          className={`mx-3 md:mx-0 ${isOwnMessage ? "order-1" : "order-2"}`}
         >
-          <div className=" relative cursor-pointer text-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-300">
+          <div className="relative cursor-pointer text-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-300">
             <OutsideClickHandler
               onOutsideClick={() => setShowMessageMenu(false)}
             >
@@ -156,7 +153,7 @@ const MessageCont = ({ isOwnMessage, isGroupChat, message }) => {
                       navigator.clipboard.writeText(message.content);
                       setShowMessageMenu(false);
                     }}
-                    className=" mb-1 hover:text-slate-300"
+                    className="mb-1 hover:text-slate-300"
                   >
                     copy
                   </p>
@@ -193,6 +190,7 @@ export default function ChatsSection() {
     removeFileFromAttachments,
     deleteUserChat,
     setIsChatSelected,
+    removeChatFromList, // from context to update UI after leaving
   } = useChat();
   const { user } = useAuth();
 
@@ -204,7 +202,7 @@ export default function ChatsSection() {
   const opponentUsername = opponentParticipant?.username;
   const opponentProfilePictureUrl = opponentParticipant?.avatarUrl;
 
-  const scrollToBottomRef = new useRef();
+  const scrollToBottomRef = useRef();
 
   const scrollToBottom = () => {
     scrollToBottomRef.current?.scrollIntoView();
@@ -218,7 +216,6 @@ export default function ChatsSection() {
     }
   };
 
-  // handle call only if the target user id is available
   useEffect(() => {
     if (targetUserId) {
       handleCall();
@@ -229,35 +226,49 @@ export default function ChatsSection() {
     scrollToBottom();
   }, [messages]);
 
+  // Handler for leaving a group chat
+  const handleLeaveChat = async () => {
+    if (!window.confirm("Are you sure you want to leave this chat?")) {
+      return;
+    }
+    try {
+      if (currentSelectedChat.current?._id) {
+        await leaveGroupChat(currentSelectedChat.current._id);
+        removeChatFromList(currentSelectedChat.current._id);
+        alert("Left group chat successfully.");
+      }
+    } catch (error) {
+      console.error("Error leaving chat:", error);
+      alert("Error leaving chat. Please try again.");
+    }
+  };
+
   return (
     <div className="overflow-y-hidden">
-      <div className="flex w-full items-center justify-between p-5 md:p-4 shadow-md md:shadow-xl ">
-        <div className="flex gap-3 items-center ">
+      <div className="flex w-full items-center justify-between p-5 md:p-4 shadow-md md:shadow-xl">
+        <div className="flex gap-3 items-center">
           <div onClick={() => setIsChatSelected(false)}>
-            {" "}
-            <MdArrowBackIos className="hidden md:block dark:text-white text-2xl" />{" "}
+            <MdArrowBackIos className="hidden md:block dark:text-white text-2xl" />
           </div>
           {currentSelectedChat.current.isGroupChat ? (
             <div className="w-10 relative h-10 flex-shrink-0 flex justify-start items-center flex-nowrap mr-3">
               {currentSelectedChat.current.participants
                 .slice(0, 3)
-                .map((participant, i) => {
-                  return (
-                    <img
-                      key={participant._id}
-                      src={participant.avatarUrl}
-                      className={`w-10 h-10  border-white rounded-full absolute outline outline-3 outline-black ${
-                        i === 0
-                          ? "left-0 z-30"
-                          : i === 1
-                          ? "left-2 z-20"
-                          : i === 2
-                          ? "left-4 z-10"
-                          : ""
-                      }`}
-                    />
-                  );
-                })}
+                .map((participant, i) => (
+                  <img
+                    key={participant._id}
+                    src={participant.avatarUrl}
+                    className={`w-10 h-10 border-white rounded-full absolute outline outline-3 outline-black ${
+                      i === 0
+                        ? "left-0 z-30"
+                        : i === 1
+                        ? "left-2 z-20"
+                        : i === 2
+                        ? "left-4 z-10"
+                        : ""
+                    }`}
+                  />
+                ))}
             </div>
           ) : (
             <img
@@ -268,11 +279,6 @@ export default function ChatsSection() {
             />
           )}
 
-          {/* <img
-            className="size-12 rounded-full object-cover"
-            src={opponentProfilePictureUrl}
-            alt=""
-          /> */}
           <h3 className="font-medium text-xl md:text-md text-slate-800 dark:text-white">
             {currentSelectedChat.current?.isGroupChat
               ? currentSelectedChat.current.name
@@ -280,34 +286,56 @@ export default function ChatsSection() {
           </h3>
         </div>
 
-        <div className="text-xl flex gap-5 text-slate-800 dark:text-slate-100 ">
-          <div className="cursor-pointer">
-            <BiSearch />
-          </div>
-          {/* <div className="cursor-pointer">
-            <IoCallOutline />
-          </div>
-        */}
-          <div className="cursor-pointer">
-            {!currentSelectedChat.current?.isGroupChat && (
-              <IoVideocamOutline onClick={handleCallButtonClick} />
-            )}
-          </div>
-          <div className="cursor-pointer text-red-500">
+        {/* Right side header for group chats */}
+        {currentSelectedChat.current?.isGroupChat && (
+          <div className="flex items-center space-x-2">
             {currentSelectedChat.current?.admin.toString() === user._id ? (
-              <MdDeleteOutline
-                onClick={() => deleteUserChat(currentSelectedChat.current?._id)}
-              />
+              <>
+                <button
+                  onClick={() =>
+                    deleteUserChat(currentSelectedChat.current?._id)
+                  }
+                  title="Delete Chat"
+                  className="focus:outline-none"
+                >
+                  <MdDeleteOutline className="text-3xl text-red-500 hover:text-red-700" />
+                </button>
+                <button
+                  onClick={handleLeaveChat}
+                  title="Leave Chat"
+                  className="focus:outline-none"
+                >
+                  <FaSignOutAlt className="text-3xl text-red-600 hover:text-red-700" />
+                </button>
+              </>
             ) : (
-              ""
+              <button
+                onClick={handleLeaveChat}
+                title="Leave Chat"
+                className="focus:outline-none"
+              >
+                <FaSignOutAlt className="text-3xl text-red-600 hover:text-red-700" />
+              </button>
             )}
           </div>
-        </div>
+        )}
+
+        {/* For non-group chats, use the original right-side icons */}
+        {!currentSelectedChat.current?.isGroupChat && (
+          <div className="text-xl flex gap-5 text-slate-800 dark:text-slate-100">
+            <div className="cursor-pointer">
+              <BiSearch />
+            </div>
+            <div className="cursor-pointer">
+              <IoVideocamOutline onClick={handleCallButtonClick} />
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="chat-msg-cont relative overflow-auto px-4 md:px-2 w-full h-[calc(100vh-180px)] md:h-[calc(100vh-260px)] ">
+      <div className="chat-msg-cont relative overflow-auto px-4 md:px-2 w-full h-[calc(100vh-180px)] md:h-[calc(100vh-260px)]">
         {loadingMessages ? (
-          <div className=" h-full w-full flex items-center justify-center">
+          <div className="h-full w-full flex items-center justify-center">
             <Loading />
           </div>
         ) : !messages?.length ? (
@@ -330,14 +358,15 @@ export default function ChatsSection() {
           </>
         )}
       </div>
+
       {!!attachments.length && (
-        <div className="showAttachmentFiles absolute bottom-24  grid grid-cols-5 gap-2 ">
+        <div className="showAttachmentFiles absolute bottom-24 grid grid-cols-5 gap-2">
           {attachments?.map((file, index) => (
             <div
               key={index}
               className="px-2 bg-slate-900 bg-opacity-50 rounded-md flex flex-col items-center"
             >
-              <div className="text-red-500 w-full ">
+              <div className="text-red-500 w-full">
                 <RxCross2
                   className="float-right text-2xl cursor-pointer"
                   onClick={() => removeFileFromAttachments(index)}
@@ -361,12 +390,13 @@ export default function ChatsSection() {
           ))}
         </div>
       )}
-      <div className="h-[90px] md:h-auto border-t shadow-xl dark:border-slate-500 light-upper-cont-shadow dark:dark-upper-cont-shadow bg-slate w-full flex items-center justify-between p-4 md:p-2 ">
-        <div className="flex-1 mr-4 md:mr-2 ">
+
+      <div className="h-[90px] md:h-auto border-t shadow-xl dark:border-slate-500 light-upper-cont-shadow dark:dark-upper-cont-shadow bg-slate w-full flex items-center justify-between p-4 md:p-2">
+        <div className="flex-1 mr-4 md:mr-2">
           <input
             type="text"
             placeholder="Enter Message..."
-            className="w-full h-full px-4 py-2 md:p-2 md:text-sm rounded-lg dark:bg-slate-600 border border-transparent bg-backgroundLight3 focus:outline-none dark:text-white text-black "
+            className="w-full h-full px-4 py-2 md:p-2 md:text-sm rounded-lg dark:bg-slate-600 border border-transparent bg-backgroundLight3 focus:outline-none dark:text-white text-black"
             onKeyDown={(e) => {
               if (e.key === "Enter") sendChatMessage();
             }}
@@ -391,7 +421,6 @@ export default function ChatsSection() {
               onChange={(e) => setAttachments([...e.target.files])}
             />
           </div>
-          {/* // future version  */}
           <div>
             <label htmlFor="fileAttach" className="cursor-pointer">
               <IoMdAttach className="text-primary text-xl hover:text-primary_hover" />

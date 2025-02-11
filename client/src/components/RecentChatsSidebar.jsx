@@ -5,6 +5,7 @@ import { useChat } from "../context/ChatContext";
 import RecentUserChatCard from "./RecentUserChatCard";
 import Loading from "./Loading";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 
 export default function RecentChatsSidebar() {
   const {
@@ -16,9 +17,10 @@ export default function RecentChatsSidebar() {
     currentSelectedChat,
     isChatSelected,
     setIsChatSelected,
-    setOpenAddChat, // used to open the AddChat modal
+    setOpenAddChat, // used to open the AddChat modal for group creation
   } = useChat();
   const { user } = useAuth();
+  const { onlineUsers } = useSocket();
 
   const [filteredRecentUserChats, setFilteredRecentUserChats] = useState(null);
 
@@ -61,7 +63,9 @@ export default function RecentChatsSidebar() {
 
   return (
     <div
-      className={`px-5 py-6 md:p-2 w-full h-full md:${isChatSelected ? "hidden" : "block"}`}
+      className={`px-5 py-6 md:p-2 w-full h-full md:${
+        isChatSelected ? "hidden" : "block"
+      }`}
     >
       {/* Top header with "Recent chats" title and the new group creation button */}
       <div className="top flex items-center justify-between">
@@ -122,18 +126,29 @@ export default function RecentChatsSidebar() {
               key={chat._id}
               chat={chat}
               isActive={currentSelectedChat.current?._id === chat._id}
-              onClick={(chat) => {
+              onClick={(clickedChat) => {
                 if (
                   currentSelectedChat.current?._id &&
-                  currentSelectedChat.current?._id === chat?._id
+                  currentSelectedChat.current?._id === clickedChat?._id
                 )
                   return;
-                LocalStorage.set("currentSelectedChat", chat);
-                currentSelectedChat.current = chat;
+                LocalStorage.set("currentSelectedChat", clickedChat);
+                currentSelectedChat.current = clickedChat;
                 setIsChatSelected(true);
                 setMessages([]);
                 getMessages(currentSelectedChat.current?._id);
               }}
+              // For one-to-one chats, pass the opponent's online status using socket context onlineUsers set.
+              opponentOnline={
+                !chat.isGroupChat &&
+                (() => {
+                  const opponent = chat.participants.find(
+                    (participant) => participant._id !== user._id
+                  );
+                  // Convert opponent._id to a string before checking onlineUsers
+                  return opponent ? onlineUsers.has(opponent._id.toString()) : false;
+                })()
+              }
             />
           ))}
         </div>
