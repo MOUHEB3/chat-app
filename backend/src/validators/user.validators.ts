@@ -35,4 +35,16 @@ const userLoginValidator = (): any => {
   ];
 };
 
-export { userRegisterValidator, userLoginValidator };
+// New validator for updating status
+const updateStatusValidator = (): any => {
+  return [
+    body("status")
+      .trim()
+      .notEmpty()
+      .withMessage("status is required")
+      .isIn(["active", "away", "dnd", "offline"])
+      .withMessage("Invalid status. Allowed values are: active, away, dnd, offline"),
+  ];
+};
+
+export { userRegisterValidator, userLoginValidator, updateStatusValidator };

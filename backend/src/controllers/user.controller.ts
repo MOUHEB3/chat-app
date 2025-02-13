@@ -10,6 +10,8 @@ import { createTokens } from "./auth/authUtils";
 import { filterUserData } from "../helpers/utils";
 import { SuccessResponse } from "../core/ApiResponse";
 import { cookieValidity, environment, tokenInfo } from "../config";
+import { emitSocketEvent } from "../helpers/socket";  // Import the emitSocketEvent function
+
 
 // Extend Express Request type to include `user`
 interface AuthenticatedRequest extends Request {
@@ -40,16 +42,16 @@ const signUp = asyncHandler(async (req: Request, res: Response) => {
       avatarUrl: `https://s3bucket.bytenode.xyz/staticbucketstorage/public/images/avatar${
         Math.floor(Math.random() * (40 - 1 + 1)) + 1
       }.avif`,
-      online: false,  // Ensure the user is offline when created
     } as User,
     RoleCode.USER
   );
 
   const tokens = await createTokens(user);
   const userData = await filterUserData(user);
+  const userDataWithStatus = { ...userData, isOnline: user.isOnline };
 
   new SuccessResponse("signup successful", {
-    user: userData,
+    user: userDataWithStatus,
     tokens,
   }).send(res);
 });
@@ -65,10 +67,11 @@ const login = asyncHandler(async (req: Request, res: Response) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) throw new AuthFailureError("Invalid credentials");
 
-  const { password: pass, ...filteredUser } = user;  // Removed the `status` field reference
+  // Update the user's online status
+  await UserModel.findByIdAndUpdate(user._id, { isOnline: true });
 
-  // Set the user online when they log in
-  await userRepo.updateUserOnlineStatus(user._id, true); // Update the online status to true
+  const { password: pass, status, ...filteredUser } = user;
+  const filteredUserWithStatus = { ...filteredUser, isOnline: true };
 
   const tokens = await createTokens(user);
 
@@ -82,16 +85,15 @@ const login = asyncHandler(async (req: Request, res: Response) => {
     .cookie("refreshToken", tokens.refreshToken, options);
 
   new SuccessResponse("login successful", {
-    user: filteredUser,  // Returning filteredUser without status
+    user: filteredUserWithStatus,
     tokens,
   }).send(res);
 });
 
-
 const logout = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   if (req.user) {
-    // Set the user offline when they log out
-    await userRepo.updateUserOnlineStatus(req.user._id, false); // Update the online status to false
+    // Set user's status to offline
+    await UserModel.findByIdAndUpdate(req.user._id, { isOnline: false });
   }
 
   const options = {
@@ -104,4 +106,31 @@ const logout = asyncHandler(async (req: AuthenticatedRequest, res: Response) => 
   new SuccessResponse("logout successful", {}).send(res, {});
 });
 
-export { signUp, login, logout };
+// Update User Status Method
+const updateUserStatus = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { status } = req.body;
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new AuthFailureError("User not authenticated");
+  }
+
+  // Validate status
+  const validStatuses = ["active", "away", "dnd", "offline"];
+  if (!validStatuses.includes(status)) {
+    throw new BadRequestError("Invalid status. Allowed values: active, away, dnd, offline");
+  }
+
+  // Update the user status
+  const user = await userRepo.updateUserStatus(userId.toString(), status);
+
+  // Emit socket event to update status for other users
+  if (user) {
+    emitSocketEvent(req, userId.toString(), "updateUserStatus", { userId, status });
+  }
+
+  // Send success response
+  new SuccessResponse("User status updated successfully", user).send(res);
+});
+
+export { signUp, login, logout, updateUserStatus };

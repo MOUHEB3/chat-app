@@ -10,5 +10,7 @@ export enum ChatEventEnum {
   SOCKET_ERROR_EVENT = "socketError",
   START_TYPING_EVENT = "startTyping",
   STOP_TYPING_EVENT = "stopTyping",
-  USER_STATUS_EVENT = "user_status", // Emitted when a user's status (online/offline) changes
+  
+  // New event to handle user status updates
+  UPDATE_USER_STATUS_EVENT = "updateUserStatus",  // Added for user status updates
 }

@@ -19,9 +19,6 @@ export const requestHandler = async (api, setLoading, onSuccess, onError) => {
     }
   } catch (error) {
     console.error("Error:", error); // Log the error
-    // if ([401, 403].includes(error?.response?.data?.statusCode)) {
-    // localStorage.clear();
-    // if (isBrowser) window.location.href = "/login";
     onError(error?.response?.data?.message || "Something went wrong");
   } finally {
     setLoading && setLoading(false);
@@ -113,4 +110,39 @@ export const isValidJSON = (str) => {
     return false;
   }
   return true;
+};
+
+
+/**
+ * Switch user status between active, away, dnd, and offline.
+ * @param {string} currentStatus - The current status of the user.
+ * @returns {string} - The new status after switching.
+ */
+export const switchUserStatus = (currentStatus) => {
+  const statusOrder = ["active", "away", "dnd", "offline"]; // Order of status changes
+  const currentIndex = statusOrder.indexOf(currentStatus);
+
+  // Return the next status in the list, or loop back to 'active'
+  const nextIndex = (currentIndex + 1) % statusOrder.length;
+  return statusOrder[nextIndex];
+};
+
+/**
+ * Set the status for the current user (for manual status update).
+ * @param {string} status - The new status to set.
+ * @param {function} setStatus - Function to update the status state in the component.
+ */
+export const setStatus = (status, setStatus) => {
+  // Update status in the backend or context if needed
+  setStatus(status); // Update the component state
+};
+
+/**
+ * Utility function to validate user status.
+ * @param {string} status - The status to validate.
+ * @returns {boolean} - True if the status is valid.
+ */
+export const isValidStatus = (status) => {
+  const validStatuses = ["active", "away", "dnd", "offline"];
+  return validStatuses.includes(status);
 };

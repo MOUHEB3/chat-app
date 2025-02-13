@@ -23,7 +23,6 @@ const chatContext = createContext();
 export const useChat = () => useContext(chatContext);
 
 export const ChatProvider = ({ children }) => {
-  const [isConnected, setIsConnected] = useState(false); // state to store the socket connection status
   const [searchedUsers, setSearchedUsers] = useState(null); // state to store the stored users
   const [openAddChat, setOpenAddChat] = useState(false); // state to display the AddChat modal
   const [newChatUser, setNewChatUser] = useState(null); // storing the new user with chat is going to be created
@@ -238,14 +237,10 @@ export const ChatProvider = ({ children }) => {
   useEffect(() => {
     if (!socket) return;
     // setup all the listeners for the socket events from server
-    socket.on(socketEvents.CONNECTED_EVENT, () => setIsConnected(true));
-    socket.on(socketEvents.DISCONNECT_EVENT, () => setIsConnected(false));
     socket.on(socketEvents.MESSAGE_RECEIVED_EVENT, onMessageReceived);
     socket.on(socketEvents.MESSAGE_DELETE_EVENT, onMessageDeleted);
     return () => {
       // remove all the listeners for the socket events
-      socket.off(socketEvents.CONNECTED_EVENT);
-      socket.off(socketEvents.DISCONNECT_EVENT);
       socket.off(socketEvents.MESSAGE_RECEIVED_EVENT, onMessageReceived);
       socket.off(socketEvents.MESSAGE_DELETE_EVENT, onMessageDeleted);
     };

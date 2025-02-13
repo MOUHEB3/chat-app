@@ -10,6 +10,7 @@ import userRepo from "../database/repositories/userRepo";
 import { Types } from "mongoose";
 import { ProtectedRequest } from "../types/app-request";
 import { Response, NextFunction } from "express";
+import { emitSocketEvent } from "../helpers/socket"; // Import the emitSocketEvent
 
 export const verifyJWT = asyncHandler(
   async (req: ProtectedRequest, res: Response, next: NextFunction) => {
@@ -33,8 +34,14 @@ export const verifyJWT = asyncHandler(
 
       req.user = userData;
 
-      // Set the user as online when the JWT is verified (logged in)
-      await userRepo.updateUserOnlineStatus(userData._id, true);
+      // Update the user's online status to true after successful authentication
+      await userRepo.updateUserStatus(userData._id.toString(), "active");
+
+      // Optional: Emit socket event for real-time status update
+      emitSocketEvent(req, userData._id.toString(), "updateUserStatus", {
+        userId: userData._id.toString(),
+        status: "active",
+      });
 
       next();
     } catch (error) {

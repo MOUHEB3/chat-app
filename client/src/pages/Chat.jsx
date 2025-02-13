@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SideMenu from "../components/SideMenu";
 import ChatLeftSidebar from "../components/ChatLeftSidebar";
 import ChatsSection from "../components/ChatsSection";
@@ -9,6 +9,7 @@ import { useChat } from "../context/ChatContext";
 import VideoChat from "../components/VideoChat";
 import { useConnectWebRtc } from "../context/WebRtcContext";
 import IncomingCall from "../components/IncomingCall";
+import UserStatus from "../components/UserStatus"; // Import the UserStatus component
 import { leaveGroupChat } from "../api"; // <-- leaveGroupChat import (retained if needed elsewhere)
 import { useNavigate } from "react-router-dom"; // Optional: for navigation after leaving
 
@@ -18,22 +19,39 @@ export default function Chat() {
     activeLeftSidebar,
     setActiveLeftSidebar,
     isChatSelected,
-    // removeChatFromList is used in ChatsSection's header for leave-chat action,
-    // so no separate leave chat button is needed here.
   } = useChat();
   const { showVideoComp, incomingOffer } = useConnectWebRtc();
-  const { onlineUsers } = useSocket(); // Consume online status from SocketContext
+  const { socket, socketEvents } = useSocket(); // Consume socket and socket events from SocketContext
   const navigate = useNavigate(); // Optional: for redirecting after leaving
+
+  // Optional: Track the user status
+  const [userStatus, setUserStatus] = useState("offline");
+
+  useEffect(() => {
+    // Listen for status update event when the user connects
+    if (socket) {
+      socket.on(socketEvents.UPDATE_USER_STATUS_EVENT, (data) => {
+        // Update the status of the user when an event is received
+        if (data.userId === currentSelectedChat.current?.userId) {
+          setUserStatus(data.status);
+        }
+      });
+    }
+
+    // Cleanup the socket event listener on unmount
+    return () => {
+      if (socket) {
+        socket.off(socketEvents.UPDATE_USER_STATUS_EVENT);
+      }
+    };
+  }, [socket, socketEvents, currentSelectedChat]);
 
   return (
     <>
-      <div className="h-full w-full ">
+      <div className="h-full w-full">
         <AddChat open={true} />
         {!!incomingOffer && (
-          <IncomingCall
-            incomingOffer={incomingOffer}
-            active={!!incomingOffer}
-          />
+          <IncomingCall incomingOffer={incomingOffer} active={!!incomingOffer} />
         )}
         <VideoChat show={showVideoComp} />
         <div className="w-full h-screen md:h-[calc(100vh-120px)] flex dark:bg-backgroundDark3 relative">
@@ -47,9 +65,7 @@ export default function Chat() {
             <ChatLeftSidebar activeLeftSidebar={activeLeftSidebar} />
           </div>
           <div
-            className={`w-full md:${
-              isChatSelected && activeLeftSidebar === "recentChats" ? "" : "hidden"
-            }`}
+            className={`w-full md:${isChatSelected && activeLeftSidebar === "recentChats" ? "" : "hidden"}`}
           >
             {currentSelectedChat.current?._id ? (
               <>
@@ -63,7 +79,11 @@ export default function Chat() {
           </div>
         </div>
         {/* Display online users status */}
-
+        <div className="user-status-display">
+          <UserStatus userId={currentSelectedChat.current?.userId} />
+          {/* You can also display the current user's status here */}
+          <p>Status: {userStatus}</p>
+        </div>
       </div>
       <div className="hidden md:block">
         <SideMenu

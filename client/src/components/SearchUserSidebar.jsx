@@ -1,11 +1,11 @@
 import React, { useRef } from "react";
-import { BiSearch, profile } from "../assets";
+import { BiSearch } from "../assets";
 import { getAvailableUsers } from "../api";
 import { useChat } from "../context/ChatContext";
-import { useSocket } from "../context/SocketContext"; // Added to access online status
 import { useNavigate } from "react-router-dom";
+import UserStatus from "./UserStatus"; // Import the UserStatus component
 
-const SearchedUsersResultCard = ({ user, opponentOnline }) => {
+const SearchedUsersResultCard = ({ user }) => {
   const { createOneToOneChat } = useChat(); // Function to directly create chat
   const navigate = useNavigate();
 
@@ -33,19 +33,16 @@ const SearchedUsersResultCard = ({ user, opponentOnline }) => {
   return (
     <div className="flex justify-between p-4 my-1 rounded-md bg-backgroundLight3 dark:bg-backgroundDark1 items-center w-full">
       <div className="flex gap-2 items-center w-max">
-        <div>
+        <div className="relative">
+          {/* Avatar */}
           <img
             className="size-8 rounded-full object-cover"
             src={user.avatarUrl}
             alt={user.username}
             loading="lazy"
           />
-          {/* Online indicator */}
-          <span
-            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-              opponentOnline ? "bg-green-500" : "bg-gray-400"
-            }`}
-          ></span>
+          {/* Status Dot */}
+          <UserStatus userId={user._id} />
         </div>
         <div>
           <h3 className="font-medium text-base text-slate-700 dark:text-slate-100">
@@ -68,7 +65,6 @@ export default function SearchUserSidebar() {
 
   // useChat hook
   const { searchedUsers, setSearchedUsers } = useChat();
-  const { onlineUsers } = useSocket(); // Access online users from socket context
 
   const searchUsers = async () => {
     const { data } = await getAvailableUsers(searchInputRef.current.value);
@@ -114,11 +110,7 @@ export default function SearchUserSidebar() {
               </h2>
             ) : (
               searchedUsers.map((user) => (
-                <SearchedUsersResultCard
-                  key={user._id}
-                  user={user}
-                  opponentOnline={onlineUsers.has(user._id)} // Pass online status
-                />
+                <SearchedUsersResultCard key={user._id} user={user} />
               ))
             )}
           </div>

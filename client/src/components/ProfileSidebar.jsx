@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { RiArrowDropDownLine, RiArrowDropUpLine } from "../assets";
+import { RiArrowDropDownLine, RiArrowDropUpLine } from "../assets"; 
 import { useAuth } from "../context/AuthContext";
+import UserStatus from "./UserStatus"; // Import the UserStatus component
 
 export default function ProfileSidebar() {
   const { user, logout } = useAuth();
@@ -26,7 +27,6 @@ export default function ProfileSidebar() {
             My Profile
           </h1>
 
-          {/* Changed from a <div> to a <button> to ensure reliable click handling */}
           <button
             onClick={logout}
             className="text-red-500 cursor-pointer text-sm font-medium bg-transparent border-none"
@@ -36,14 +36,17 @@ export default function ProfileSidebar() {
         </div>
 
         <div className="w-full flex flex-col items-center justify-center gap-3 my-10">
-          {/* Removed the online/offline status indicator */}
+          {/* User Avatar */}
           <div className="relative">
             <img
               className="size-32 rounded-full object-cover"
               src={user.avatarUrl}
               alt={user.username}
             />
+            {/* Display the status dot */}
+            <UserStatus userId={user._id} />
           </div>
+
           <p className="text-black font-medium text-xl dark:text-white">
             {user.username}
           </p>

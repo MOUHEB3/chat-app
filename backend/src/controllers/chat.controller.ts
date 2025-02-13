@@ -20,6 +20,29 @@ import messageRepo from "../database/repositories/messageRepo";
 // <-- New import for leave chat functionality -->
 import { leaveGroupChat } from "../database/model/Chat";
 
+
+// Add function to update user status
+const updateUserStatus = asyncHandler(async (req: ProtectedRequest, res: Response) => {
+  const { userId, status } = req.body;
+
+  if (!userId || !status) {
+    throw new BadRequestError("User ID and status are required");
+  }
+
+  // Update status in the database
+  const user = await userRepo.updateUserStatus(userId, status);
+
+  // Emit socket event to update status for other users
+  emitSocketEvent(
+    req,
+    userId,
+    ChatEventEnum.UPDATE_USER_STATUS_EVENT,
+    { userId, status }
+  );
+
+  return new SuccessResponse("User status updated successfully", user).send(res);
+});
+
 // search available users
 const searchAvailableusers = asyncHandler(
   async (req: ProtectedRequest, res: Response) => {
@@ -367,6 +390,7 @@ export {
   createGroupChat,
   getGroupChatDetails,
   addNewUserToGroup,
-  leaveChat, 
+  updateUserStatus, 
+  leaveChat,
   deleteChat,
 };

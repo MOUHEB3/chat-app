@@ -1,5 +1,6 @@
 import cookie from "cookie";
 import User from "../database/model/User";
+import { UserModel } from "../database/model/User";  // <-- New import for updating user status
 import { Namespace, Socket } from "socket.io";
 import { ChatEventEnum } from "../constants";
 import { Server } from "http";
@@ -65,27 +66,37 @@ const initSocketIo = (io: any): void => {
       socket.user = user;
       socket.join(user._id.toString());
 
-      // Set the user as online in the database
-      await userRepo.updateUserOnlineStatus(user._id, true); // Add this to update the status
+      // Update online status to true upon connection
+      await UserModel.findByIdAndUpdate(user._id, { isOnline: true, status: "online" });
+
+      // Notify other users about the online status
+      io.emit("updateUserStatus", { userId: user._id.toString(), status: "online" });
 
       socket.emit(ChatEventEnum.CONNECTED_EVENT);
       colorsUtils.log("info", "🤝 User connected. userId: " + user._id.toString());
-
-      // Emit the online status event to all clients
-      io.emit("user_status", { userId: user._id.toString(), status: "online" });
 
       mountJoinChatEvent(socket);
       mountStartTypingEvent(socket);
       mountStopTypingEvent(socket);
 
-      // disconnect event: update the online status when the user disconnects
+      // Listen for user status changes (e.g., away, do not disturb)
+      socket.on("set-status", async (status: string) => {
+        if (user && ["active", "away", "dnd"].includes(status)) {
+          // Update user status in the database
+          await UserModel.findByIdAndUpdate(user._id, { status });
+
+          // Notify others about the status change
+          io.emit("updateUserStatus", { userId: user._id.toString(), status });
+        }
+      });
+
+      // disconnect event: update online status to offline and notify clients
       socket.on("disconnect", async () => {
         if (socket.user?._id) {
-          // Set the user as offline in the database
-          await userRepo.updateUserOnlineStatus(socket.user._id, false); // Add this to update the status
+          await UserModel.findByIdAndUpdate(socket.user._id, { isOnline: false, status: "offline" });
 
-          // Emit the offline status event to all clients
-          io.emit("user_status", { userId: socket.user._id.toString(), status: "offline" });
+          // Notify other users about the offline status
+          io.emit("updateUserStatus", { userId: socket.user._id.toString(), status: "offline" });
 
           socket.leave(socket.user._id.toString());
         }

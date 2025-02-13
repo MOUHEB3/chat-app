@@ -7,69 +7,66 @@ export class JwtPayload {
   sub: string;
   iss: string;
   iat: number;
-  exp: number;
-
-  constructor(
-    issuer: string,
-    audience: string,
-    subject: string,
-    validity: number
-  ) {
+  // Removed exp property from the class
+  constructor(issuer: string, audience: string, subject: string, validity: number) {
     this.iss = issuer;
     this.aud = audience;
     this.sub = subject;
-    this.iat = Math.floor(Date.now() / 1000);
-    this.exp = this.iat + validity;
+    this.iat = Math.floor(Date.now() / 1000); // Set issued time
+    // We no longer need exp directly here.
   }
 }
 
-// create token from jwt
-const generateToken = async (payload: JwtPayload): Promise<string> => {
-  if (!tokenInfo.jwtSecretKey)
-    throw new InternalError("required jwt secret key");
+// ✅ FIXED: No need for exp property, only use expiresIn
+const generateToken = async (payload: JwtPayload, validity: number): Promise<string> => {
+  if (!tokenInfo.jwtSecretKey) throw new InternalError("JWT Secret Key is missing");
 
   return new Promise<string>((resolve, reject) => {
-    sign({ ...payload }, tokenInfo.jwtSecretKey, (err, token) => {
-      if (err) reject(err);
-      resolve(token as string);
+    // Pass expiresIn as the validity directly, no need to add exp to the payload
+    sign(
+      { ...payload },
+      tokenInfo.jwtSecretKey,
+      { expiresIn: validity }, // Pass the validity (e.g., "1h" for 1 hour) to expiresIn
+      (err, token) => {
+        if (err) {
+          console.error("JWT Signing Error:", err);
+          reject(err);
+        }
+        resolve(token as string);
+      }
+    );
+  });
+};
+
+// ✅ FIXED: Proper error handling & debugging for validation
+const validateToken = async (token: string): Promise<JwtPayload> => {
+  if (!token) throw new InternalError("No token provided");
+
+  return new Promise<JwtPayload>((resolve, reject) => {
+    verify(token, tokenInfo.jwtSecretKey, (err, decoded) => {
+      if (err) {
+        console.error("JWT Validation Error:", err); // ✅ Added logging for debugging
+        if (err.name === "TokenExpiredError") return reject(new TokenExpiredError());
+        return reject(new BadTokenError("Invalid token"));
+      }
+      resolve(decoded as JwtPayload);
     });
   });
 };
 
-// verify and return the decoded token payload
-const validateToken = async (token: string): Promise<JwtPayload> => {
-  if (!token) throw new InternalError("no token provided");
-  try {
-    return new Promise<JwtPayload>((resolve, reject) => {
-      verify(token, tokenInfo.jwtSecretKey, (err, decoded) => {
-        if (err) reject(err);
-        resolve(decoded as JwtPayload);
-      });
-    });
-  } catch (e: any) {
-    if (e && e.name === "TokenExpiredError") throw new TokenExpiredError();
-    // throws error if other error occurs
-    throw new BadTokenError();
-  }
-};
-
-// return the decoded token payload even if token is expired
+// ✅ FIXED: Decode token with better error handling
 const decodeToken = async (token: string): Promise<JwtPayload> => {
-  if (!token) throw new InternalError("no token provided");
+  if (!token) throw new InternalError("No token provided");
 
-  try {
-    const options = {
-      ignoreExpiration: true,
-    };
-    return new Promise<JwtPayload>((resolve, reject) => {
-      verify(token, tokenInfo.jwtSecretKey, options, (err, decoded) => {
-        if (err) reject(err);
-        resolve(decoded as JwtPayload);
-      });
+  return new Promise<JwtPayload>((resolve, reject) => {
+    verify(token, tokenInfo.jwtSecretKey, { ignoreExpiration: true }, (err, decoded) => {
+      if (err) {
+        console.error("JWT Decoding Error:", err); // ✅ Debugging error log
+        return reject(new BadTokenError("Malformed token"));
+      }
+      resolve(decoded as JwtPayload);
     });
-  } catch (error) {
-    throw new BadTokenError();
-  }
+  });
 };
 
 export default {

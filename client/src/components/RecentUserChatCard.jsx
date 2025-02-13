@@ -1,10 +1,9 @@
 import moment from "moment";
-import { profile } from "../assets";
 import { useAuth } from "../context/AuthContext";
 import { getChatObjectMetadata, limitChar } from "../utils";
+import UserStatus from "./UserStatus"; // Import the UserStatus component
 
-export default function RecentUserChatCard({ chat, onClick, isActive, opponentOnline }) {
-  // user context
+export default function RecentUserChatCard({ chat, onClick, isActive }) {
   const { user } = useAuth();
 
   const filteredChat = getChatObjectMetadata(chat, user); // filter the chat object metadata
@@ -17,6 +16,7 @@ export default function RecentUserChatCard({ chat, onClick, isActive, opponentOn
       } items-center w-full cursor-pointer`}
     >
       {chat.isGroupChat ? (
+        // In group chat, we display participants' avatars
         <div className="w-12 relative h-12 mr-2 flex-shrink-0 flex justify-start items-center flex-nowrap">
           {chat.participants.slice(0, 3).map((participant, i) => {
             return (
@@ -25,31 +25,23 @@ export default function RecentUserChatCard({ chat, onClick, isActive, opponentOn
                 src={participant.avatarUrl}
                 loading="lazy"
                 className={`w-10 h-10 border-white rounded-full absolute outline outline-3 outline-black ${
-                  i === 0
-                    ? "left-0 z-30"
-                    : i === 1
-                    ? "left-2 z-20"
-                    : i === 2
-                    ? "left-4 z-10"
-                    : ""
+                  i === 0 ? "left-0 z-30" : i === 1 ? "left-2 z-20" : i === 2 ? "left-4 z-10" : ""
                 }`}
               />
             );
           })}
         </div>
       ) : (
+        // In one-to-one chat, we display the user's status using the UserStatus component
         <div className="relative mr-2">
           <img
             className="size-12 rounded-full object-cover"
             src={filteredChat.avatar}
-            alt=""
+            alt="Avatar"
             loading="lazy"
           />
-          <span
-            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-              opponentOnline ? "bg-green-500" : "bg-gray-400"
-            }`}
-          ></span>
+          {/* Use the UserStatus component to show the online/offline dot */}
+          <UserStatus userId={filteredChat._id} />
         </div>
       )}
 
@@ -72,9 +64,6 @@ export default function RecentUserChatCard({ chat, onClick, isActive, opponentOn
           <div className="text-sm text-slate-500 dark:text-slate-400">
             {limitChar(filteredChat.lastMessage, 25)}
           </div>
-          {/* <span className="rounded-full size-5 text-center content-center text-xs bg-secondary bg-opacity-20 shadow-md dark:text-white">
-            3
-          </span> */}
         </div>
       </div>
     </div>

@@ -113,7 +113,7 @@ const searchAvailableUsers = (
   currentUser: User,
   searchTermUsernameOrEmail: string
 ): Aggregate<any> => {
-  return UserModel.aggregate([  
+  return UserModel.aggregate([
     {
       $match: {
         _id: {
@@ -136,17 +136,22 @@ const searchAvailableUsers = (
   ]);
 };
 
-// Update user online status
-const updateUserOnlineStatus = async (
-  userId: Types.ObjectId,
-  onlineStatus: boolean
-): Promise<void> => {
-  await UserModel.findByIdAndUpdate(
-    userId,
-    { online: onlineStatus },  // Update the online field
-    { new: true }
-  ).lean();
+// Add a new function to update the user status
+const updateUserStatus = async (userId: string, status: string): Promise<User | null> => {
+  try {
+    // Find the user and update their status
+    const user = await UserModel.findByIdAndUpdate(
+      userId,
+      { status },
+      { new: true } // Ensure it returns the updated user
+    ).lean();
+
+    return user;
+  } catch (error) {
+    throw new InternalError("Error updating user status");
+  }
 };
+
 
 export default {
   exists,
@@ -158,6 +163,6 @@ export default {
   create,
   update,
   updateInfo,
+  updateUserStatus,  // <-- Export the new function
   searchAvailableUsers,
-  updateUserOnlineStatus,  // Export the new method for updating online status
 };

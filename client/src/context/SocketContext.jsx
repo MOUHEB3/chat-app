@@ -1,20 +1,22 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { LocalStorage } from "../utils";
 import socketio from "socket.io-client";
 
-// method to establish a socket connection
+// Method to establish a socket connection
 const getSocket = () => {
-  const token = LocalStorage.get("token"); // get token from local storage
-  // create a socket connection with the provided URI and authentication
+  const token = LocalStorage.get("token"); // Get token from local storage
   return socketio(import.meta.env.VITE_SOCKET_URI, {
     withCredentials: true,
     auth: { token },
+    reconnection: true, // ✅ Enables automatic reconnection
+    reconnectionAttempts: 5, // ✅ Limits reconnection attempts
+    reconnectionDelay: 3000, // ✅ 3s delay before trying to reconnect
   });
 };
 
-const SocketContext = createContext({ socket: null, isConnected: false });
+const SocketContext = createContext({ socket: null, isConnected: false, socketEvents: {}, userStatus: {} });
 
-// custom hook to access socket instance from context
+// Custom hook to access socket instance from context
 const useSocket = () => useContext(SocketContext);
 
 const socketEvents = {
@@ -28,52 +30,56 @@ const socketEvents = {
   LEAVE_CHAT_EVENT: "leaveChat",
   UPDATE_GROUP_NAME_EVENT: "updateGroupName",
   MESSAGE_DELETE_EVENT: "messageDeleted",
-  USER_ONLINE: "userOnline",
-  USER_OFFLINE: "userOffline",
+  UPDATE_USER_STATUS_EVENT: "updateUserStatus", // Add the user status update event
 };
 
 const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [userStatus, setUserStatus] = useState({}); // Store statuses of all users
 
-  useEffect(() => {
-    const socketInstance = getSocket();
-    setSocket(socketInstance);
+  // Establish socket connection
+  const connectSocket = useCallback(() => {
+    if (!socketRef.current) {
+      socketRef.current = getSocket();
 
-    // Listen for connection and disconnection events to update connection status
-    socketInstance.on("connect", () => setIsConnected(true));
-    socketInstance.on("disconnect", () => setIsConnected(false));
+      // Event handling for socket connection
+      socketRef.current.on("connect", () => setIsConnected(true));
+      socketRef.current.on("disconnect", () => setIsConnected(false));
 
-    // Listen for online/offline status updates from the server using "updateUserStatus" event
-    socketInstance.on("updateUserStatus", ({ userId, status }) => {
-      if (status === "online") {
-        setOnlineUsers((prev) => new Set(prev).add(userId));
-      } else if (status === "offline") {
-        setOnlineUsers((prev) => {
-          const updatedUsers = new Set(prev);
-          updatedUsers.delete(userId);
-          return updatedUsers;
-        });
-      }
-    });
-
-    // Disconnect socket when component unmounts
-    return () => {
-      if (socketInstance) {
-        socketInstance.off("connect");
-        socketInstance.off("disconnect");
-        socketInstance.off("updateUserStatus");
-        socketInstance.disconnect();
-      }
-    };
+      // Handle the update of user status
+      socketRef.current.on(socketEvents.UPDATE_USER_STATUS_EVENT, (data) => {
+        console.log("User status updated:", data); // Log status
+        // Update the state that holds the user status
+        setUserStatus((prevStatus) => ({
+          ...prevStatus,
+          [data.userId]: data.status, // Update or add new user status
+        }));
+      });
+    }
   }, []);
 
+  // Disconnect socket
+  const disconnectSocket = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.off("connect");
+      socketRef.current.off("disconnect");
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    connectSocket();
+    return () => disconnectSocket();
+  }, [connectSocket, disconnectSocket]);
+
   return (
-    <SocketContext.Provider value={{ socket, socketEvents, isConnected, onlineUsers }}>
+    <SocketContext.Provider value={{ socket: socketRef.current, socketEvents, isConnected, userStatus, connectSocket, disconnectSocket }}>
       {children}
     </SocketContext.Provider>
   );
 };
+
 
 export { SocketProvider, useSocket };

@@ -21,7 +21,17 @@ const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
 
   const navigate = useNavigate();
-  const { socket } = useSocket(); // ✅ FIXED: Destructure socket properly
+  const { socket, initializeSocket } = useSocket(); // ✅ Added initializeSocket for reconnection
+
+  // ✅ FIXED: Function to store token safely & validate it
+  const storeToken = (token) => {
+    if (!token || typeof token !== "string" || token.split(".").length !== 3) {
+      console.error("Invalid JWT Token!");
+      return;
+    }
+    localStorage.setItem("token", token);
+    setToken(token);
+  };
 
   // Handle Login
   const login = async (data) => {
@@ -30,13 +40,16 @@ const AuthProvider = ({ children }) => {
       setIsLoading,
       (res) => {
         const { data } = res;
-        setUser({ ...data.user, isOnline: true });
-        setToken(data.tokens.accessToken);
-        localStorage.setItem("user", JSON.stringify({ ...data.user, isOnline: true }));
-        localStorage.setItem("token", data.tokens.accessToken); // ✅ FIXED: Don't use JSON.stringify
+        setUser(data.user);  // Removed isOnline status
+        storeToken(data.tokens.accessToken);
+        localStorage.setItem("user", JSON.stringify(data.user)); // Removed isOnline status
 
         // ✅ FIXED: Ensure socket exists before emitting
-        if (socket) socket.emit("userOnline", data.user._id);
+        if (socket) {
+          // Removed the socket.emit("userOnline") event
+        } else {
+          initializeSocket(); // ✅ Reconnect socket if it's not initialized
+        }
 
         navigate("/chat");
       },
@@ -64,7 +77,7 @@ const AuthProvider = ({ children }) => {
       setIsLoading,
       () => {
         if (user && socket) {
-          socket.emit("userOffline", user._id);
+          // Removed socket.emit("userOffline") event
           socket.disconnect(); // ✅ Fully disconnect socket
         }
 

@@ -10,10 +10,11 @@ export default interface User {
   password: string;
   avatarUrl?: string;
   bio?: string;
+  status?: "active" | "away" | "dnd" | "offline";  // Updated to string for multiple statuses
+  isOnline?: boolean;  // Track whether the user is online
   roles: Role[];
   createdAt?: Date;
   updatedAt?: Date;
-  online: boolean;  // Add the online field to track user status
 }
 
 const schema = new Schema<User>({
@@ -52,6 +53,17 @@ const schema = new Schema<User>({
     maxlength: 200,
   },
 
+  status: {
+    type: Schema.Types.String,
+    enum: ["active", "away", "dnd", "offline"],  // Enum for user statuses
+    default: "offline",  // Default status
+  },
+
+  isOnline: {  // Tracks whether the user is online
+    type: Schema.Types.Boolean,
+    default: false,
+  },
+
   roles: {
     type: [
       {
@@ -71,11 +83,6 @@ const schema = new Schema<User>({
   updatedAt: {
     type: Schema.Types.Date,
     default: Date.now,
-  },
-
-  online: { // Added the online field to store user status
-    type: Schema.Types.Boolean,
-    default: false, // Default to false (offline)
   },
 });
 
