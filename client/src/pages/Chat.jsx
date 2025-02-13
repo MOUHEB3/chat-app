@@ -78,12 +78,6 @@ export default function Chat() {
             )}
           </div>
         </div>
-        {/* Display online users status */}
-        <div className="user-status-display">
-          <UserStatus userId={currentSelectedChat.current?.userId} />
-          {/* You can also display the current user's status here */}
-          <p>Status: {userStatus}</p>
-        </div>
       </div>
       <div className="hidden md:block">
         <SideMenu

@@ -106,11 +106,12 @@ const logout = asyncHandler(async (req: AuthenticatedRequest, res: Response) => 
   new SuccessResponse("logout successful", {}).send(res, {});
 });
 
-// Update User Status Method
+// Function to update user status
 const updateUserStatus = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { status } = req.body;
   const userId = req.user?._id;
 
+  // Check if the user is authenticated
   if (!userId) {
     throw new AuthFailureError("User not authenticated");
   }
@@ -121,16 +122,20 @@ const updateUserStatus = asyncHandler(async (req: AuthenticatedRequest, res: Res
     throw new BadRequestError("Invalid status. Allowed values: active, away, dnd, offline");
   }
 
-  // Update the user status
+  // Update the user status in the database
   const user = await userRepo.updateUserStatus(userId.toString(), status);
 
-  // Emit socket event to update status for other users
+  // Emit socket event to notify other users about the status update
   if (user) {
-    emitSocketEvent(req, userId.toString(), "updateUserStatus", { userId, status });
+    // Emit the event to update user status to all connected clients
+    emitSocketEvent(req, userId.toString(), "updateUserStatus", status); // Pass status as string
   }
 
   // Send success response
   new SuccessResponse("User status updated successfully", user).send(res);
 });
+
+
+
 
 export { signUp, login, logout, updateUserStatus };

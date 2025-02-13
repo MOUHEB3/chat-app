@@ -1,7 +1,6 @@
 import moment from "moment";
 import { useAuth } from "../context/AuthContext";
 import { getChatObjectMetadata, limitChar } from "../utils";
-import UserStatus from "./UserStatus"; // Import the UserStatus component
 
 export default function RecentUserChatCard({ chat, onClick, isActive }) {
   const { user } = useAuth();
@@ -32,7 +31,7 @@ export default function RecentUserChatCard({ chat, onClick, isActive }) {
           })}
         </div>
       ) : (
-        // In one-to-one chat, we display the user's status using the UserStatus component
+        // In one-to-one chat, we display the user's avatar without the status dot
         <div className="relative mr-2">
           <img
             className="size-12 rounded-full object-cover"
@@ -40,8 +39,6 @@ export default function RecentUserChatCard({ chat, onClick, isActive }) {
             alt="Avatar"
             loading="lazy"
           />
-          {/* Use the UserStatus component to show the online/offline dot */}
-          <UserStatus userId={filteredChat._id} />
         </div>
       )}
 

@@ -54,15 +54,16 @@ const schema = new Schema<User>({
   },
 
   status: {
-    type: Schema.Types.String,
+    type: String,
     enum: ["active", "away", "dnd", "offline"],  // Enum for user statuses
     default: "offline",  // Default status
   },
-
+  
   isOnline: {  // Tracks whether the user is online
-    type: Schema.Types.Boolean,
+    type: Boolean,
     default: false,
   },
+  
 
   roles: {
     type: [

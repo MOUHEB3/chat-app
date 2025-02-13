@@ -14,9 +14,13 @@ const getSocket = () => {
   });
 };
 
-const SocketContext = createContext({ socket: null, isConnected: false, socketEvents: {}, userStatus: {} });
+const SocketContext = createContext({
+  socket: null,
+  isConnected: false,
+  socketEvents: {},
+  userStatus: {},
+});
 
-// Custom hook to access socket instance from context
 const useSocket = () => useContext(SocketContext);
 
 const socketEvents = {
@@ -44,8 +48,14 @@ const SocketProvider = ({ children }) => {
       socketRef.current = getSocket();
 
       // Event handling for socket connection
-      socketRef.current.on("connect", () => setIsConnected(true));
-      socketRef.current.on("disconnect", () => setIsConnected(false));
+      socketRef.current.on("connect", () => {
+        setIsConnected(true);
+        console.log("Socket connected!"); // Ensure socket is connected before updating status
+      });
+      socketRef.current.on("disconnect", () => {
+        setIsConnected(false);
+        console.log("Socket disconnected!");
+      });
 
       // Handle the update of user status
       socketRef.current.on(socketEvents.UPDATE_USER_STATUS_EVENT, (data) => {
@@ -64,6 +74,7 @@ const SocketProvider = ({ children }) => {
     if (socketRef.current) {
       socketRef.current.off("connect");
       socketRef.current.off("disconnect");
+      socketRef.current.off(socketEvents.UPDATE_USER_STATUS_EVENT); // Clean up user status event listener
       socketRef.current.disconnect();
       socketRef.current = null;
     }
@@ -80,6 +91,5 @@ const SocketProvider = ({ children }) => {
     </SocketContext.Provider>
   );
 };
-
 
 export { SocketProvider, useSocket };

@@ -139,11 +139,10 @@ const searchAvailableUsers = (
 // Add a new function to update the user status
 const updateUserStatus = async (userId: string, status: string): Promise<User | null> => {
   try {
-    // Find the user and update their status
     const user = await UserModel.findByIdAndUpdate(
       userId,
       { status },
-      { new: true } // Ensure it returns the updated user
+      { new: true }
     ).lean();
 
     return user;
@@ -151,6 +150,7 @@ const updateUserStatus = async (userId: string, status: string): Promise<User | 
     throw new InternalError("Error updating user status");
   }
 };
+
 
 
 export default {

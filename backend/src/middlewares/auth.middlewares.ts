@@ -38,10 +38,7 @@ export const verifyJWT = asyncHandler(
       await userRepo.updateUserStatus(userData._id.toString(), "active");
 
       // Optional: Emit socket event for real-time status update
-      emitSocketEvent(req, userData._id.toString(), "updateUserStatus", {
-        userId: userData._id.toString(),
-        status: "active",
-      });
+      emitSocketEvent(req, userData._id.toString(), "updateUserStatus", "active");  // Pass status as string
 
       next();
     } catch (error) {

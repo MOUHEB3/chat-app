@@ -3,7 +3,6 @@ import { BiSearch } from "../assets";
 import { getAvailableUsers } from "../api";
 import { useChat } from "../context/ChatContext";
 import { useNavigate } from "react-router-dom";
-import UserStatus from "./UserStatus"; // Import the UserStatus component
 
 const SearchedUsersResultCard = ({ user }) => {
   const { createOneToOneChat } = useChat(); // Function to directly create chat
@@ -41,8 +40,7 @@ const SearchedUsersResultCard = ({ user }) => {
             alt={user.username}
             loading="lazy"
           />
-          {/* Status Dot */}
-          <UserStatus userId={user._id} />
+          {/* Removed UserStatus component */}
         </div>
         <div>
           <h3 className="font-medium text-base text-slate-700 dark:text-slate-100">

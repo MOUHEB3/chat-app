@@ -325,7 +325,7 @@ export default function ChatsSection() {
         {!currentSelectedChat.current?.isGroupChat && (
           <div className="text-xl flex gap-5 text-slate-800 dark:text-slate-100">
             <div className="cursor-pointer">
-              <BiSearch />
+              
             </div>
             <div className="cursor-pointer">
               <IoVideocamOutline onClick={handleCallButtonClick} />

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { RiArrowDropDownLine, RiArrowDropUpLine } from "../assets"; 
 import { useAuth } from "../context/AuthContext";
-import UserStatus from "./UserStatus"; // Import the UserStatus component
 
 export default function ProfileSidebar() {
   const { user, logout } = useAuth();
@@ -43,8 +42,7 @@ export default function ProfileSidebar() {
               src={user.avatarUrl}
               alt={user.username}
             />
-            {/* Display the status dot */}
-            <UserStatus userId={user._id} />
+            {/* Removed the UserStatus component */}
           </div>
 
           <p className="text-black font-medium text-xl dark:text-white">

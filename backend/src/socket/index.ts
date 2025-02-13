@@ -5,76 +5,80 @@ import { Namespace, Socket } from "socket.io";
 import { ChatEventEnum } from "../constants";
 import { Server } from "http";
 import { Application, Request } from "express";
-import { BadTokenError } from "../core/ApiError";
+import { BadTokenError, ApiError } from "../core/ApiError";
 import JWT from "../core/JWT";
 import userRepo from "../database/repositories/userRepo";
 import colorsUtils from "../helpers/colorsUtils";
 import { Types } from "mongoose";
 
+// Declare the Socket interface to include 'user' property
 declare module "socket.io" {
   interface Socket {
     user?: User;
   }
 }
 
-// handles the join chat event i.e. when a user joins a room
+// Handles the join chat event, i.e., when a user joins a room
 const mountJoinChatEvent = (socket: Socket): void => {
   socket.on(ChatEventEnum.JOIN_CHAT_EVENT, (chatId: string) => {
-    colorsUtils.log("info", "user joined a chat room. chatId: " + chatId);
-    socket.join(chatId); // join the user to a one-to-one or group chat room
+    colorsUtils.log("info", "User joined a chat room. chatId: " + chatId);
+    socket.join(chatId); // Join the user to a one-to-one or group chat room
   });
 };
 
-// handle the start typing event
+// Handle the start typing event
 const mountStartTypingEvent = (socket: Socket): void => {
   socket.on(ChatEventEnum.START_TYPING_EVENT, (chatId: string) => {
     socket.in(chatId).emit(ChatEventEnum.START_TYPING_EVENT, chatId);
   });
 };
 
-// handle the stop typing event
+// Handle the stop typing event
 const mountStopTypingEvent = (socket: Socket): void => {
   socket.on(ChatEventEnum.STOP_TYPING_EVENT, (chatId: string) => {
     socket.in(chatId).emit(ChatEventEnum.STOP_TYPING_EVENT, chatId);
   });
 };
 
-// function to initialize the socket.io
+// Function to initialize socket.io and manage connections
 const initSocketIo = (io: any): void => {
   io.on("connection", async (socket: Socket) => {
     try {
-      // get the token from the cookies or the handshake auth header
+      // Get the token from the cookies or handshake auth header
       const cookies = cookie.parse(socket.handshake.headers?.cookie || "");
       let token = cookies?.accessToken || socket.handshake.auth?.token;
 
-      // throw an error if the token is not found
+      // If no token is found, throw a BadTokenError
       if (!token) {
         throw new BadTokenError("Token not found");
       }
 
-      // decode the token
+      // Validate the token
       const decodedToken = await JWT.validateToken(token);
 
-      // get user info
+      // Retrieve user info based on token data
       const userId = new Types.ObjectId(decodedToken.sub);
-      const user = await userRepo.findById(userId);
+      const user = await UserModel.findById(userId);
+
 
       if (!user) {
         throw new BadTokenError("Invalid token");
       }
 
+      // Set the user on the socket
       socket.user = user;
       socket.join(user._id.toString());
 
       // Update online status to true upon connection
       await UserModel.findByIdAndUpdate(user._id, { isOnline: true, status: "online" });
 
-      // Notify other users about the online status
+      // Emit status to all users about the user's online status
       io.emit("updateUserStatus", { userId: user._id.toString(), status: "online" });
 
       socket.emit(ChatEventEnum.CONNECTED_EVENT);
       colorsUtils.log("info", "🤝 User connected. userId: " + user._id.toString());
 
+      // Handle other socket events like typing events and joining chats
       mountJoinChatEvent(socket);
       mountStartTypingEvent(socket);
       mountStopTypingEvent(socket);
@@ -90,10 +94,15 @@ const initSocketIo = (io: any): void => {
         }
       });
 
-      // disconnect event: update online status to offline and notify clients
+      // Disconnect event: update online status to offline and notify clients
       socket.on("disconnect", async () => {
         if (socket.user?._id) {
-          await UserModel.findByIdAndUpdate(socket.user._id, { isOnline: false, status: "offline" });
+          const userId = socket.user._id.toString();
+          await UserModel.findByIdAndUpdate(userId, { isOnline: false, status: "offline" });
+          io.emit("updateUserStatus", { userId: socket.user._id.toString(), status: "offline" });
+
+          // Update offline status in the database
+          await UserModel.findByIdAndUpdate(user._id, { isOnline: false, status: "offline" });
 
           // Notify other users about the offline status
           io.emit("updateUserStatus", { userId: socket.user._id.toString(), status: "offline" });
@@ -101,16 +110,20 @@ const initSocketIo = (io: any): void => {
           socket.leave(socket.user._id.toString());
         }
       });
-      
+
     } catch (error) {
-      socket.emit(
-        ChatEventEnum.SOCKET_ERROR_EVENT,
-        "something went wrong while connecting to socket"
-      );
+      // Handle errors and send socket-specific error response
+      if (error instanceof ApiError) {
+        // Emit the error directly to the socket
+        socket.emit("error", error.message);
+      } else {
+        socket.emit("error", "Something went wrong with the connection");
+      }
     }
   });
 };
 
+// Emit socket event to notify other users about the status update
 const emitSocketEvent = (
   req: Request,
   roomId: string,

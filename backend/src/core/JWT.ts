@@ -17,7 +17,7 @@ export class JwtPayload {
   }
 }
 
-// ✅ FIXED: No need for exp property, only use expiresIn
+// No need for exp property, only use expiresIn
 const generateToken = async (payload: JwtPayload, validity: number): Promise<string> => {
   if (!tokenInfo.jwtSecretKey) throw new InternalError("JWT Secret Key is missing");
 

@@ -5,7 +5,6 @@ import { useChat } from "../context/ChatContext";
 import RecentUserChatCard from "./RecentUserChatCard";
 import Loading from "./Loading";
 import { useAuth } from "../context/AuthContext";
-import { useSocket } from "../context/SocketContext"; // Import the SocketContext
 
 export default function RecentChatsSidebar() {
   const {
@@ -20,7 +19,6 @@ export default function RecentChatsSidebar() {
     setOpenAddChat, // used to open the AddChat modal for group creation
   } = useChat();
   const { user } = useAuth();
-  const { userStatus } = useSocket(); // Get user status from SocketContext
 
   const [filteredRecentUserChats, setFilteredRecentUserChats] = useState(null);
 
@@ -126,7 +124,6 @@ export default function RecentChatsSidebar() {
               key={chat._id}
               chat={chat}
               isActive={currentSelectedChat.current?._id === chat._id}
-              userStatus={userStatus} // Pass user status here
               onClick={(clickedChat) => {
                 if (
                   currentSelectedChat.current?._id &&
