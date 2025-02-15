@@ -1,29 +1,29 @@
-/client/amazetalk/node_modules
-/client/amazetalk/.pnp
-/client/amazetalk/.pnp.js
+/client/MB CHAT/node_modules
+/client/MB CHAT/.pnp
+/client/MB CHAT/.pnp.js
 
 # testing
-/client/amazetalk/coverage
+/client/MB CHAT/coverage
 
 # production
-/client/amazetalk/build
+/client/MB CHAT/build
 
 #firebase
-client/amazetalk/firebase.json
-client/amazetalk/.firebase
-client/amazetalk/.firebaserc
-client/amazetalk/README.md
+client/MB CHAT/firebase.json
+client/MB CHAT/.firebase
+client/MB CHAT/.firebaserc
+client/MB CHAT/README.md
 # misc
-client/amazetalk/.env
-/client/amazetalk/.DS_Store
-/client/amazetalk/.env.local
-/client/amazetalk/env
-/client/amazetalk/.env.development.local
-/client/amazetalk/.env.test.local
-/client/amazetalk/.env.production.local
+client/MB CHAT/.env
+/client/MB CHAT/.DS_Store
+/client/MB CHAT/.env.local
+/client/MB CHAT/env
+/client/MB CHAT/.env.development.local
+/client/MB CHAT/.env.test.local
+/client/MB CHAT/.env.production.local
 
-/client/amazetalk/npm-debug.log*
-/client/amazetalk/yarn-debug.log*
-/client/amazetalk/yarn-error.log*
+/client/MB CHAT/npm-debug.log*
+/client/MB CHAT/yarn-debug.log*
+/client/MB CHAT/yarn-error.log*
 /server/node_modules
 /server/.env
