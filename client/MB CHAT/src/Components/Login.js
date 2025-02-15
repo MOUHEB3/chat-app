@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import SimpleBackdrop from "./PageLoading";
 import { message } from "antd";
 import { styled } from "@mui/material/styles";
-import chatnow from "./Images/chatnow.png";
+import chatnow from "./Images/chat.png";
 import Chip from "@mui/material/Chip";
 import ImageIcon from "@mui/icons-material/Image";
 import GitHubIcon from "@mui/icons-material/GitHub";
@@ -213,12 +213,12 @@ export default function Login() {
             }}
           >
             <IconButton
-              onClick={() => window.open("https://github.com/vibhorarya12/AmazeTalk-MERN-CHAT-APP")}
+              onClick={() => window.open("https://github.com/MOUHEB3")}
               title="vibhorarya12"
             >
               <GitHubIcon sx={{ color: "grey" }} fontSize="large" />
             </IconButton>
-            <p>git-repo</p>{" "}
+            <p>github</p>{" "}
           </div>
         </div>
       ) : ( <div className="login-box" style={{position:'relative', overflowY:'auto'}}>

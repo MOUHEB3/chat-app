@@ -25,7 +25,7 @@ const connect_db = async () => {
 };
 connect_db();
 app.get("/", (req, res) => {
-  res.send("welcome to chat now 2023");
+  res.send("welcome to chat now 2025");
 });
 app.use("/user", userRoutes);
 app.use("/chats", chatRoutes);

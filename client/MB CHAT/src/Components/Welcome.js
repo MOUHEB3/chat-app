@@ -1,7 +1,7 @@
 import React from "react";
 import "./myStyle.css";
 import { useNavigate } from "react-router-dom";
-import chatnow from "./Images/chatnow.png";
+import chatnow from "./Images/chat.png";
 export default function Welcome() {
   const token = localStorage.getItem("token");
   const navigate = useNavigate();

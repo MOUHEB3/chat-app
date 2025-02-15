@@ -1,7 +1,7 @@
 //sounds for reveiving messages and notifications//
 
-import sound from "../Sounds/sound.wav";
-import chat from "../Sounds/chat.mp3";
+import sound from "./sound.wav";
+import chat from "./chat.mp3";
 const audioRef = new Audio();
 const Ring = () => {
   audioRef.src = sound;
