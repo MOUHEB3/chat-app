@@ -1,6 +1,6 @@
-const User = require("../Models/userModel");
-const Chat = require("../Models/chatModel");
-const handler = require("express-async-handler");
+import User from "../Models/userModel.js";
+import Chat from "../Models/chatModel.js";
+import handler from "express-async-handler";
 
 const accessChat = handler(async (req, res) => {
   const { userId } = req.body;
@@ -204,7 +204,7 @@ const getUsersInGroup = handler(async (req, res) => {
   }
 });
 
-module.exports = {
+export {
   accessChat,
   fetchChats,
   fetchGroups,

@@ -1,31 +1,30 @@
-const express = require("express");
-const userModel = require("../Models/userModel");
-const handler = require("express-async-handler");
-const generateToken = require("../Config/generateToken");
+import express from "express";
+import userModel from "../Models/userModel.js";
+import handler from "express-async-handler";
+import generateToken from "../Config/generateToken.js";
 
 const loginController = handler(async (req, res) => {
   const { name, password } = req.body;
   const user = await userModel.findOne({ name });
-  if (user && (await user.matchPassword(password))) {
 
-    const imageBase64 = user.image ? user.image.toString('base64') : null;
+  if (user && (await user.matchPassword(password))) {
+    const imageBase64 = user.image ? user.image.toString("base64") : null;
     const response = {
       _id: user._id,
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
-      image : imageBase64,
+      image: imageBase64,
       token: generateToken(user._id),
-      
     };
     res.json(response);
   } else {
     res.status(401);
-    throw new Error("invalid username and password");
+    throw new Error("Invalid username and password");
   }
 });
 
-//registration controller///
+// Registration controller
 const registerController = handler(async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -57,7 +56,7 @@ const registerController = handler(async (req, res) => {
         name,
         email,
         password,
-        image :image.buffer,
+        image: image.buffer,
       });
     } else {
       user = await userModel.create({ name, email, password });
@@ -92,4 +91,4 @@ const fetchAllUsersController = handler(async (req, res) => {
   res.send(users);
 });
 
-module.exports = { registerController, loginController , fetchAllUsersController};
+export { registerController, loginController, fetchAllUsersController };
