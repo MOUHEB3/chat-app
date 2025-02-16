@@ -173,7 +173,8 @@ export default function SingleChat() {
         return newUsers;
       });
     });
-  }, []);
+  }, [setOnlineUsers, userId]); 
+
 
   // new message received //
   useEffect(() => {
@@ -235,7 +236,8 @@ export default function SingleChat() {
     return () => {
       socket.off("message received", handleNewMessage);
     };
-  }, [allMessagesCopy, userId]);
+  }, [allMessagesCopy, userId, ChatInfo._id, setNotifications]);  
+
 
   // fetching messages of a particular chat //
   useEffect(() => {
@@ -251,7 +253,8 @@ export default function SingleChat() {
       axios
         .get(`${URL}/message/${ChatInfo._id}`, config)
         .then(({ data }) => {
-          if (data.length == 0) {
+          if (data.length === 0) {  
+
             setLoading(false);
             setAllMessagesCopy([]);
             socket.emit("join chat", ChatInfo._id);
@@ -270,7 +273,9 @@ export default function SingleChat() {
           setLoading(false);
         });
     }
-  }, [ChatInfo._id]);
+  }, [navigate, ChatInfo._id, userId]);  // ✅ Added 'userId' to the dependency array
+
+
 
   // Fetch group info//
   useEffect(() => {
@@ -334,7 +339,7 @@ export default function SingleChat() {
     };
 
     fetchData();
-  }, [ChatInfo.isGroup, ChatInfo._id, userId]);
+  }, [ChatInfo.isGroup, ChatInfo._id, navigate, userId]);  // ✅ Added 'navigate' and 'userId'
 
   //exiting groups//
   const exitGroupChat = async () => {
@@ -351,7 +356,7 @@ export default function SingleChat() {
     };
 
     try {
-      const response = await axios.put(url, data, { headers });
+      await axios.put(url, data, { headers });
       // Handle the response as needed
       // console.log("Response:", response.data);
       navigate("/app/welcome");
@@ -390,7 +395,8 @@ export default function SingleChat() {
       socket.off("typing");
       socket.off("stop typing");
     };
-  }, [socket, ChatInfo._id]);
+  }, [ChatInfo._id]);
+
 
   return (
     <>
@@ -544,7 +550,7 @@ export default function SingleChat() {
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => (handleClose(), exitGroupChat())}>
+          <Button onClick={() => { handleClose(); exitGroupChat(); }}>
               {" "}
               Agree
             </Button>

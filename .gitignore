@@ -14,7 +14,7 @@ client/MB CHAT/.firebase
 client/MB CHAT/.firebaserc
 client/MB CHAT/README.md
 # misc
-client/MB CHAT/.env
+
 /client/MB CHAT/.DS_Store
 /client/MB CHAT/.env.local
 /client/MB CHAT/env
@@ -26,4 +26,4 @@ client/MB CHAT/.env
 /client/MB CHAT/yarn-debug.log*
 /client/MB CHAT/yarn-error.log*
 /server/node_modules
-/server/.env
+

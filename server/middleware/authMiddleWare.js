@@ -1,27 +1,28 @@
-import jwt from "jsonwebtoken";
-import User from "../Models/userModel.js";
-import handler from "express-async-handler";
+const jwt = require("jsonwebtoken");
+const User = require("../Models/userModel");
+const handler = require("express-async-handler");
 
-const protect = handler(async (req, res, next) => {
-  let token;
-  if (
+const protect = handler(async(req,res, next)=>{
+
+ let token;
+ if(
     req.headers.authorization && req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT);
-      req.user = await User.findById(decoded.id).select("-password");
-      next();
-    } catch (error) {
-      res.status(401);
-      throw new Error("Not authorized, token failed");
-    }
-  }
+ )
+   try{
+     token = req.headers.authorization.split(" ")[1];
+     const decoded = jwt.verify(token,process.env.JWT);
+     req.user = await User.findById(decoded.id).select("-password");
+     next();
 
-  if (!token) {
+   } catch(error){
+     res.status(401);
+     throw new Error("Not authorized, token failed");
+   }
+
+   if(!token){
     res.status(401);
-    throw new Error("Not authorized, no token");
-  }
+    throw new Error("Not authorized , no token");
+   }
 });
 
-export default protect;
+module.exports= protect;

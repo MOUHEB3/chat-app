@@ -3,7 +3,7 @@ import Avatar from "@mui/material/Avatar";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import CancelSharpIcon from "@mui/icons-material/CancelSharp";
+
 function Members(props) {
   return (
     <div>

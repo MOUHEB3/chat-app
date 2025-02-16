@@ -1,5 +1,5 @@
 //sidebar for medium device
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import ConversationsItem from "./ConversationsItem";
 import { IconButton } from "@mui/material";
 import SearchSharpIcon from "@mui/icons-material/SearchSharp";
@@ -7,7 +7,6 @@ import axios from "axios";
 import empty from "./Images/empty2.png";
 import Facebook from "./Skeleton";
 import { useSelector } from "react-redux";
-import { RefreshContext } from "../App";
 export default function MediumDevice() {
   const URL = process.env.REACT_APP_API_KEY;
   const [conversations, setConversations] = useState([]);
@@ -15,7 +14,6 @@ export default function MediumDevice() {
   const [loading, setLoading] = useState(false);
   const lightTheme = useSelector((state) => state.themeKey);
   const [searchTerm, setSearchTerm] = useState("");
-  const { notifications, setNotifications } = useContext(RefreshContext);
   function bufferToImage(buffer) {
     const uint8Array = new Uint8Array(buffer.data);
     const binaryString = uint8Array.reduce(
@@ -91,7 +89,8 @@ export default function MediumDevice() {
     };
 
     fetchConversations();
-  }, [userName]);
+   }, [userName, URL]); 
+
 
   const filteredConversations = conversations.filter((conversation) => {
     return conversation.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -113,7 +112,7 @@ export default function MediumDevice() {
         {loading ? (
           <Facebook />
         ) : conversations.length === 0 ? (
-          <img style={{ height: "40%", width: "100%" }} src={empty} />
+          <img style={{ height: "40%", width: "100%" }} src={empty} alt="No Conversations Available" />
         ) : (
           filteredConversations.map((conversation) => (
             <ConversationsItem props={conversation} key={conversation._id} />

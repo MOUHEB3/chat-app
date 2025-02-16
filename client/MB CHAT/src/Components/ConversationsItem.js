@@ -6,6 +6,7 @@ import Avatar from "@mui/material/Avatar";
 import { RefreshContext } from "../App";
 import Badge from "@mui/material/Badge";
 import { useSelector } from "react-redux";
+
 function ConversationsItem({ props }) {
   const [entryCount, setEntryCount] = useState(0);
   const lightTheme = useSelector((state) => state.themeKey);
@@ -27,7 +28,7 @@ function ConversationsItem({ props }) {
     }
 
     setEntryCount(count);
-  }, [notifications]);
+  }, [notifications, props._id]); // ✅ Added props._id as a dependency
 
   const removeNotification = (chatId) => {
     const updatedNotifications = notifications.filter(
@@ -59,7 +60,6 @@ function ConversationsItem({ props }) {
     <div
       className={"conversation-container"}
       onClick={() => {
-        
         localStorage.setItem("conversations", JSON.stringify(props));
         setChatInfo(JSON.parse(localStorage.getItem("conversations")) || []);
         removeNotification(props._id);

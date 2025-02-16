@@ -12,14 +12,13 @@ import Chip from "@mui/material/Chip";
 import ImageIcon from "@mui/icons-material/Image";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import IconButton from "@mui/material/IconButton";
-import InputAdornment from "@mui/material/InputAdornment";
-import AccountCircle from "@mui/icons-material/AccountCircle";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import AttachEmailSharpIcon from "@mui/icons-material/AttachEmailSharp";
-import Stack from "@mui/material/Stack";
+import InputAdornment from '@mui/material/InputAdornment';
+import AccountCircle from '@mui/icons-material/AccountCircle';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import AttachEmailSharpIcon from '@mui/icons-material/AttachEmailSharp';
+import Stack from '@mui/material/Stack';
 import Avatar from "@mui/material/Avatar";
-
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
   clipPath: "inset(50%)",
@@ -42,8 +41,7 @@ export default function Login() {
   const [Image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
-  const [showPassword, setShowPassword] = useState(false);
-
+  const [ showPassword, setShowPassword] = useState(false);
   const handleLogin = async () => {
     setLoading(true);
     try {
@@ -61,16 +59,21 @@ export default function Login() {
 
       // Check if the response contains a valid token
       if (response.data.token) {
+        // Redirect the user to another page only if login is successful
         console.log("Login successful");
         console.log(localStorage.getItem("token"));
         setLoading(false);
         navigate("/app/welcome");
       } else {
+        // Handle login failure (e.g., display an error message to the user)
         console.error("Login failed:", "Invalid token");
         setLoading(false);
       }
     } catch (error) {
+      // Handle network errors or other issues
       console.error("Login failed:", error.message);
+
+      // Check if the error is due to invalid credentials
       if (error.response && error.response.status === 401) {
         console.log("Invalid credentials provided");
         messageApi.open({
@@ -82,7 +85,9 @@ export default function Login() {
           },
         });
       }
+
       setLoading(false);
+      // Don't redirect to "/app/welcome" on login failure
     }
   };
 
@@ -105,14 +110,19 @@ export default function Login() {
     formData.append("password", password);
     setLoading(true);
     try {
-      // Removed the unused 'response' variable assignment here:
       await axios.post(`${ENDPOINT}/user/register`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
+      
+      // Save the token to localStorage upon successful registration (if applicable)
+      
+
+      // Redirect the user to another page or perform any other action here
       console.log("Registration successful");
       setLoading(false);
+      // console.log(localStorage.getItem("token"));
       navigate("/");
       setRegister(false);
     } catch (error) {
@@ -126,6 +136,7 @@ export default function Login() {
         },
       });
       setLoading(false);
+      // Handle registration failure (e.g., display an error message to the user)
     }
   };
 
@@ -133,26 +144,28 @@ export default function Login() {
     const selectedImage = e.target.files[0];
     setImage(selectedImage);
   };
-
   return (
     <div className="login-container">
       {contextHolder}
       <div className="image-container">
-        <img src={chatnow} alt="alt" className="welcome-logo" draggable="false" />
+        <img
+          src={chatnow}
+          alt="alt"
+          className="welcome-logo"
+          draggable="false"
+        />
       </div>
       {!register ? (
-        <div className="login-box" style={{ position: "relative" }}>
+        <div className="login-box" style={{position:'relative'}}>
           <p>login to your account</p>
           <TextField
-            id="username-field"
-            name="username"
+            id="outlined-basic"
             type="text"
             label="Enter Username"
             variant="outlined"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            sx={{ boxShadow: 3 }}
+            sx={{boxShadow:3}}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -163,24 +176,23 @@ export default function Login() {
           />
 
           <TextField
-            id="password-field"
-            name="password"
-            type={showPassword ? "text" : "password"}
+            id="outlined-basic"
+            type= {showPassword?"text":"password"}
             label="Password"
             variant="outlined"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            sx={{ boxShadow: 3 }}
+            sx={{boxShadow:3}}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                  <IconButton onClick={()=>setShowPassword(!showPassword)}>
+               {showPassword?<VisibilityOffIcon/>:<VisibilityIcon/>}   
                   </IconButton>
                 </InputAdornment>
               ),
             }}
+           
           />
           <Button variant="outlined" onClick={handleLogin}>
             Login
@@ -195,7 +207,9 @@ export default function Login() {
               alignSelf: "flex-end",
               position: "absolute",
               right: "50px",
-              bottom: "5px",
+             bottom:'5px',
+           
+             
             }}
           >
             <IconButton
@@ -204,120 +218,121 @@ export default function Login() {
             >
               <GitHubIcon sx={{ color: "grey" }} fontSize="large" />
             </IconButton>
-            <p>github</p>
+            <p>github</p>{" "}
           </div>
         </div>
-      ) : (
-        <div className="login-box" style={{ position: "relative", overflowY: "auto" }}>
-          <Stack direction={"column"} spacing={3}>
-            {Image ? (
-              <div style={{ position: "relative" }}>
-                <Avatar
-                  sx={{
-                    width: "auto",
-                    height: "15vh",
-                    maxWidth: "150px",
-                    boxShadow: 15,
-                  }}
-                  src={URL.createObjectURL(Image)}
-                />
-                <Chip label="X" size="small" variant="outlined" onClick={() => setImage(null)} />
-              </div>
-            ) : null}
-
-            <p>Register now</p>
-            <TextField
-              id="reg-username-field"
-              name="username"
-              type="text"
-              label="Enter Username"
-              variant="outlined"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              sx={{ boxShadow: 3 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <AccountCircle />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <TextField
-              id="reg-email-field"
-              name="email"
-              type="email"
-              label="Enter Email"
-              variant="outlined"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              sx={{ boxShadow: 3 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <AttachEmailSharpIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <TextField
-              id="reg-password-field"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              label="Password"
-              variant="outlined"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-              sx={{ boxShadow: 3 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)}>
-                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            <Button
-              component="label"
-              variant="contained"
-              startIcon={<ImageIcon />}
-              style={{
-                borderRadius: "23px",
-                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.6)",
-              }}
-              sx={{ bgcolor: "#9b44e8" }}
-            >
-              Profile pic (optional)
-              <VisuallyHiddenInput
-                type="file"
-                name="image"
-                accept="image/*"
-                onChange={handleImageChange}
+      ) : ( <div className="login-box" style={{position:'relative', overflowY:'auto'}}>
+        <Stack direction={"column"} spacing={3}>
+      {Image ? (
+        <div style={{position:'relative'}}>
+          <Avatar
+                sx={{
+                  width: "auto", 
+                  height: "15vh",
+                  maxWidth: "150px", 
+                  boxShadow: 15,
+                  
+                  
+                  
+                }}
+                src={URL.createObjectURL(Image)}
               />
-            </Button>
-
-            <Button variant="outlined" onClick={handleRegister}>
-              Register
-            </Button>
-            <div>
-              <p
-                style={{ cursor: "pointer", bottom: "10px", position: "relative" }}
-                onClick={() => setRegister(false)}
-              >
-                Already have an account?
-              </p>
-            </div>
-          </Stack>
+          <Chip
+            label="X"
+            size="small"
+            variant="outlined"
+            onClick={() => setImage(null)}
+          />
+      
         </div>
-      )}
+      ) : null}
 
-      {loading ? <SimpleBackdrop title="please wait..." /> : null}
+      <p>Register now</p>
+      <TextField
+        id="outlined-basic"
+        type="text"
+        label="Enter Username"
+        variant="outlined"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        sx={{boxShadow:3}}
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <AccountCircle />
+            </InputAdornment>
+          ),
+        }}
+      />
+      <TextField
+        id="outlined-basic"
+        type="email" 
+        label="Enter Email"
+        variant="outlined"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)} 
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <AttachEmailSharpIcon/>
+            </InputAdornment>
+          ),
+        }}
+        sx={{boxShadow:3}}
+      />
+      <TextField
+        id="outlined-basic"
+        type={showPassword?"text":"password"}
+        label="Password"
+        variant="outlined"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        sx={{boxShadow:3}}
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton onClick={()=>setShowPassword(!showPassword)}>
+           {showPassword?<VisibilityOffIcon/>:<VisibilityIcon/>}   
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+      />
+
+      <Button
+        component="label"
+        variant="contained"
+        startIcon={<ImageIcon />}
+        style={{
+          borderRadius: "23px",
+          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.6)",
+        }}
+        sx={{ bgcolor: "#9b44e8" }}
+      >
+        Profile pic{" (optional)"}
+        <VisuallyHiddenInput
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+        />
+      </Button>
+
+      <Button variant="outlined" onClick={handleRegister}>
+        Register
+      </Button>
+      <div>
+        <p style={{ cursor: "pointer" , bottom:'10px', position:'relative'}} onClick={() => setRegister(false)}>
+          Already have an account?
+        </p>
+      </div>
+      </Stack>
+    
+    </div>)
+        }
+
+      {loading ? (
+        <SimpleBackdrop title="please wait..." />
+      ) : null}
     </div>
   );
 }

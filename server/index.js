@@ -1,13 +1,11 @@
-import express from "express";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
-import cors from "cors";
-import { Server } from "socket.io";
-import userRoutes from "./Routes/userRoutes.js";
-import chatRoutes from "./Routes/chatRoutes.js";
-import messageRoutes from "./Routes/messageRoutes.js";
-
+const express = require("express");
 const app = express();
+const dotenv = require("dotenv");
+const mongoose = require("mongoose");
+const userRoutes = require("./Routes/userRoutes");
+const chatRoutes = require("./Routes/chatRoutes");
+const messageRoutes = require("./Routes/messageRoutes");
+const cors = require("cors");
 
 app.use(
   cors({
@@ -19,51 +17,53 @@ app.use(express.json());
 
 const connect_db = async () => {
   try {
-    await mongoose.connect(process.env.DATABASE);
-    console.log("Connected to MongoDB");
+    const connect = await mongoose.connect(process.env.DATABASE);
+    console.log("connected to mongo db");
   } catch (error) {
-    console.log("Error connecting to database:", error.message);
+    console.log("error connecting to database", error.message);
   }
 };
 connect_db();
-
 app.get("/", (req, res) => {
-  res.send("Welcome to Chat Now 2025");
+  res.send("welcome to chat now 2025");
 });
-
 app.use("/user", userRoutes);
 app.use("/chats", chatRoutes);
 app.use("/message", messageRoutes);
 
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log("Server is running");
 });
 
-const io = new Server(server, {
+const io = require("socket.io")(server, {
   cors: {
     origin: "*",
   },
   pingTimeout: 60000,
 });
-
 const onlineUsers = {};
-
 io.on("connection", (socket) => {
   socket.on("setup", (userId) => {
+    // Add the user to the onlineUsers list
     onlineUsers[userId] = socket.id;
     socket.join(userId);
     socket.emit("connected");
-    io.emit("user online", userId);
+
+    // Notify other users that this user is now online
+    io.emit("user online", userId );
   });
 
   socket.on("disconnect", () => {
+    // Remove the user from the onlineUsers list
     const userId = Object.keys(onlineUsers).find(
       (key) => onlineUsers[key] === socket.id
     );
     if (userId) {
       delete onlineUsers[userId];
-      io.emit("user offline", userId);
+
+      // Notify other users that this user has gone offline
+      io.emit("user offline",  userId );
     }
   });
 
@@ -71,11 +71,13 @@ io.on("connection", (socket) => {
     socket.join(room);
   });
 
-  socket.on("typing", (room) => socket.in(room).emit("typing", room));
-  socket.on("stop typing", (room) => socket.in(room).emit("stop typing", room));
+
+ // Server-side socket event handlers
+socket.on("typing", (room) => socket.in(room).emit("typing", room));
+socket.on("stop typing", (room) => socket.in(room).emit("stop typing", room));
 
   socket.on("new message", (newMessageStatus) => {
-    const chat = newMessageStatus.chat;
+    var chat = newMessageStatus.chat;
     if (!chat.users) {
       return console.log("chat.users not found");
     }

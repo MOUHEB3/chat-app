@@ -157,7 +157,7 @@ export default function Sidebar() {
     };
 
     fetchConversations();
-  }, [MasterRefresh]);
+  }, [MasterRefresh,URL]);
 
   // Filter conversation based on the search term
   const filteredConversations = conversations.filter((conversation) => {

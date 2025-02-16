@@ -1,4 +1,3 @@
-//component for creating groups//
 import React, { useEffect, useState, useContext } from "react";
 import { IconButton } from "@mui/material";
 import "./myStyle.css";
@@ -37,12 +36,11 @@ export default function CreateGroups() {
           },
         });
 
-        // Exclude passwords from the response
         const usersWithoutPasswords = response.data.map(
           ({ _id, name, email, image }) => ({
             _id,
-            name: name || "Unknown", // Ensure name is never undefined
-            email: email || "", // Ensure email is never undefined
+            name: name || "Unknown",
+            email: email || "",
             image,
           })
         );
@@ -56,9 +54,8 @@ export default function CreateGroups() {
     };
 
     fetchUsers();
-  }, []);
+  }, [URL]); // ✅ Fixed dependency array
 
-  // Filter users based on the search term
   const filteredUsers = users.filter((user) => {
     return (
       (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -66,7 +63,6 @@ export default function CreateGroups() {
     );
   });
 
-  // Handle checkbox change
   const handleCheckboxChange = (userId, userName, isChecked) => {
     if (isChecked) {
       setSelectedUsers((prev) => [...prev, userId]);
@@ -77,7 +73,6 @@ export default function CreateGroups() {
     }
   };
 
-  // Create groups
   const createGroup = async () => {
     setCreateLoading(true);
     try {
