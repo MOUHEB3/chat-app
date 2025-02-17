@@ -256,11 +256,11 @@ export default function Sidebar() {
         {loading ? (
           <Facebook />
         ) : conversations.length === 0 ? (
-          <img
-            className="image-container"
-            style={{ height: "40%", width: "100%" }}
-            src={empty}
-          />
+        <img
+        className="image-container"
+        style={{ height: "40%", width: "100%" }}
+        src={empty}
+        alt="No conversations available"/>
         ) : (
           filteredConversations.map((conversation) => (
             <ConversationsItem props={conversation} key={conversation._id} />

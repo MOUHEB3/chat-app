@@ -55,7 +55,7 @@ export default function Users() {
       }
     };
     fetchUsers();
-  }, []);
+  }, [URL]);
 
   const filteredUsers = users.filter((user) =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
