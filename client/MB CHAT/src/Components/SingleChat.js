@@ -33,7 +33,6 @@ import AlertTitle from "@mui/material/AlertTitle";
 import AddIcon from "@mui/icons-material/Add";
 import AddMember from "./AddMember"; 
 
-
 const URL = process.env.REACT_APP_API_KEY;
 var socket;
 export default function SingleChat() {
@@ -42,10 +41,9 @@ export default function SingleChat() {
   const [allMessagesCopy, setAllMessagesCopy] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [groupData, setGroupData] = useState(null);
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
-  const { MasterRefresh, setMasterRefresh, setNotifications } =
-    useContext(RefreshContext);
+  const { MasterRefresh, setMasterRefresh, setNotifications } = useContext(RefreshContext);
   const [otherUsersTyping, setOtherUsersTyping] = useState([]);
   const [typing, setTyping] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -59,12 +57,13 @@ export default function SingleChat() {
   const [showAlert, setShowalert] = useState(false);
   const scrollableDivRef = useRef(null);
   const { ChatInfo, setChatInfo } = useContext(ChatContext);
-  if (
-    Object.keys(ChatInfo).length === 0 &&
-    localStorage.getItem("conversations")
-  ) {
-    setChatInfo(JSON.parse(localStorage.getItem("conversations")) || []);
-  }
+
+  // Moved from render to useEffect to avoid updating state during render
+  useEffect(() => {
+    if (Object.keys(ChatInfo).length === 0 && localStorage.getItem("conversations")) {
+      setChatInfo(JSON.parse(localStorage.getItem("conversations")) || []);
+    }
+  }, [ChatInfo, setChatInfo]);
 
   if (!localStorage.getItem("conversations")) {
     navigate("/app/welcome");
@@ -107,10 +106,10 @@ export default function SingleChat() {
 
   const scrollDown = () => {
     if (scrollableDivRef.current) {
-      scrollableDivRef.current.scrollTop =
-        scrollableDivRef.current.scrollHeight;
+      scrollableDivRef.current.scrollTop = scrollableDivRef.current.scrollHeight;
     }
   };
+
   const sendMessage = () => {
     setSendingMsg(true);
     setShowalert(false);
@@ -120,7 +119,6 @@ export default function SingleChat() {
     if (!token) {
       console.error("No token found.");
       setSendingMsg(false);
-      // Handle the case where there's no token (redirect to login, show an error message, etc.)
       return;
     }
 
@@ -140,12 +138,10 @@ export default function SingleChat() {
         config
       )
       .then(({ data }) => {
-        // console.log("Message sent successfully", data);
         socket.emit("new message", data);
         setSendingMsg(false);
         setAllMessagesCopy((prevMessages) => [...prevMessages, data]);
         scrollDown();
-        // Scroll to the bottom of the messages container
         setMessageContent("");
       })
       .catch((error) => {
@@ -153,24 +149,17 @@ export default function SingleChat() {
         setSendingMsg(false);
         setShowalert(true);
         scrollDown();
-        // Handle the error (show an error message, etc.)
       });
   };
 
   // connecting to socket //
   useEffect(() => {
-    // console.log("Connecting to Socket.IO...");
     socket = io(URL);
     socket.emit("setup", userId);
-    socket.on("connected", () => {
-      // console.log("Connected to Socket.IO");
-    });
-    // Listen for "user online" event from the server//
+    socket.on("connected", () => {});
     socket.on("user online", (userId) => {
       setOnlineUsers((prevUsers) => new Set([...prevUsers, userId]));
     });
-
-    // Listen for "user offline" event from the server
     socket.on("user offline", (userId) => {
       setOnlineUsers((prevUsers) => {
         const newUsers = new Set(prevUsers);
@@ -187,17 +176,13 @@ export default function SingleChat() {
         Ring();
         scrollDown();
       }
-      // Check if allMessagesCopy is empty or the new message is different
       if (
         !allMessagesCopy.length ||
         allMessagesCopy[0]._id !== newMessage._id
       ) {
-        // Update the state with the new message
         if (newMessage.chat._id === ChatInfo._id) {
           setAllMessagesCopy((prevMessages) => [...prevMessages, newMessage]);
         }
-
-        // Append the new message to the notifications array
         if (ChatInfo._id !== newMessage.chat._id) {
           setNotifications((prevNotifications) => [
             ...prevNotifications,
@@ -220,23 +205,12 @@ export default function SingleChat() {
             },
           ]);
         }
-
-        // Display an alert for the new message
         if (ChatInfo._id !== newMessage.chat._id) {
-          if (newMessage.chat.isGroupChat) {
-            Chatsound();
-          } else {
-            Chatsound();
-          }
+          Chatsound();
         }
       }
-      // console.log("message received");
     };
-
-    // Attach the event listener
     socket.on("message received", handleNewMessage);
-
-    // Clean up the event listener when component unmounts
     return () => {
       socket.off("message received", handleNewMessage);
     };
@@ -244,7 +218,6 @@ export default function SingleChat() {
 
   // fetching messages of a particular chat //
   useEffect(() => {
-    // Check if ChatInfo._id is defined before making the request//
     setLoading(true);
     if (ChatInfo._id) {
       const config = {
@@ -260,7 +233,7 @@ export default function SingleChat() {
             setLoading(false);
             setAllMessagesCopy([]);
             socket.emit("join chat", ChatInfo._id);
-            return; // Added return to prevent accessing data[0]
+            return;
           }
           if (!data[0].chat.users.includes(userId)) {
             navigate("/app/welcome");
@@ -275,54 +248,43 @@ export default function SingleChat() {
           setLoading(false);
         });
     }
-  }, [navigate, ChatInfo._id, userId]); // ✅ Added 'userId' to the dependency array
+  }, [navigate, ChatInfo._id, userId]);
 
   // Fetch group info//
   useEffect(() => {
     setGroupLoading(true);
-
     const fetchData = async () => {
       try {
         if (!ChatInfo.isGroup) {
-          // Skip fetching group info if it's not a group chat
           setGroupLoading(false);
           return;
         }
         const token = localStorage.getItem("token");
-
         if (!token) {
           console.error("No token found.");
           setGroupLoading(false);
-          // Handle the case where there's no token (redirect to login, show an error message, etc.)
           return;
         }
-
         const config = {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         };
-
-        const groupId = ChatInfo._id; // Replace with the actual groupId
-
+        const groupId = ChatInfo._id;
         const response = await fetch(`${URL}/chats/groupInfo`, {
           method: "POST",
           headers: config.headers,
           body: JSON.stringify({ groupId }),
         });
-
         if (!response.ok) {
-          // Handle error response
           setGroupLoading(false);
           console.error("Error fetching group info:", response.statusText);
           return;
         }
-
         const data = await response.json();
         setGroupData(data);
         setGroupLoading(false);
-        // Check if the user is in the group after fetching data
         const isUserInGroup =
           data &&
           data.userMappings.some(
@@ -337,40 +299,30 @@ export default function SingleChat() {
         console.error("Error fetching group info:", error);
       }
     };
-
     fetchData();
-  }, [ChatInfo.isGroup, ChatInfo._id, navigate, userId]); // ✅ Added 'navigate' and 'userId'
+  }, [ChatInfo.isGroup, ChatInfo._id, navigate, userId]);
 
-  //exiting groups//
   const exitGroupChat = async () => {
     const url = `${URL}/chats/groupExit`;
-
     const headers = {
       Authorization: `Bearer ${localStorage.getItem("token")}`,
       "Content-Type": "application/json",
     };
-
     const data = {
       chatId: ChatInfo._id,
       userId: userId,
     };
-
     try {
       await axios.put(url, data, { headers });
-      // Handle the response as needed
-      // console.log("Response:", response.data);
       navigate("/app/welcome");
       setMasterRefresh(!MasterRefresh);
     } catch (error) {
-      // Handle errors
       console.error("Error:", error);
     }
   };
 
   // Listen for the "typing" event from other users
-  // React component
   useEffect(() => {
-    // Listen for the "typing" event from other users
     socket.on("typing", (room) => {
       if (room === ChatInfo._id) {
         setOtherUsersTyping((prevTyping) => {
@@ -381,7 +333,6 @@ export default function SingleChat() {
         });
       }
     });
-
     socket.on("stop typing", (room) => {
       if (room === ChatInfo._id) {
         setOtherUsersTyping((prevTyping) =>
@@ -389,8 +340,6 @@ export default function SingleChat() {
         );
       }
     });
-
-    // Clean up the event listeners when component unmounts
     return () => {
       socket.off("typing");
       socket.off("stop typing");
@@ -414,10 +363,7 @@ export default function SingleChat() {
           )}
         </IconButton>
         <div className="header-text">
-          <p
-            className="con-title"
-            style={{ color: lightTheme ? "black" : "white" }}
-          >
+          <p className="con-title" style={{ color: lightTheme ? "black" : "white" }}>
             {ChatInfo.name}
           </p>
           <p style={{ color: lightTheme ? "black" : "white" }}>
@@ -434,10 +380,7 @@ export default function SingleChat() {
           ) : null}
         </div>
       </div>
-      <div
-        className={"messages-container" + (lightTheme ? "" : " dark")}
-        ref={scrollableDivRef}
-      >
+      <div className={"messages-container" + (lightTheme ? "" : " dark")} ref={scrollableDivRef}>
         {showAlert && (
           <Alert
             severity="error"
@@ -458,42 +401,38 @@ export default function SingleChat() {
           allMessagesCopy
             .slice()
             .reverse()
-            .map((message, index) => {
-              if (message.sender._id === userId) {
-                return <SelfMessage key={index} props={message} />;
-              } else {
-                return <MessageOthers key={index} props={message} />;
-              }
-            })
+            .map((message, index) =>
+              message.sender._id === userId ? (
+                <SelfMessage key={index} props={message} />
+              ) : (
+                <MessageOthers key={index} props={message} />
+              )
+            )
         )}
       </div>
-
       <div className={"text-input-Area" + (lightTheme ? "" : " dark")}>
         <IconButton onClick={() => setViewEmoji(!viewEmoji)}>
           {viewEmoji ? (
             <ClearSharpIcon className={"icon" + (lightTheme ? "" : " dark")} />
           ) : (
-            <AddReactionSharpIcon
-              className={"icon" + (lightTheme ? "" : " dark")}
-            />
+            <AddReactionSharpIcon className={"icon" + (lightTheme ? "" : " dark")} />
           )}
         </IconButton>
-
         <input
           placeholder="Type a Message"
           className={"search-box" + (lightTheme ? "" : " dark")}
           value={messageContent}
           onChange={(e) => {
             setMessageContent(e.target.value);
-            handleTyping(); // Emit typing event when input changes
+            handleTyping();
           }}
-          onFocus={handleTyping} // Emit typing event when input is focused
-          onBlur={handleStopTyping} // Emit stop typing event when input is blurred
+          onFocus={handleTyping}
+          onBlur={handleStopTyping}
           onKeyDown={(event) => {
             if (event.code === "Enter") {
               sendMessage();
               setMessageContent("");
-              handleStopTyping(); // Emit stop typing event when Enter key is pressed
+              handleStopTyping();
             }
           }}
         />
@@ -501,14 +440,7 @@ export default function SingleChat() {
           <SendIcon className={"icon" + (lightTheme ? "" : " dark")} />
         </IconButton>
       </div>
-
-      {/* Group Info Modal */}
-      <Modal
-        title="Group Info"
-        open={isModalOpen}
-        onOk={handleOk}
-        onCancel={handleCancel}
-      >
+      <Modal title="Group Info" open={isModalOpen} onOk={handleOk} onCancel={handleCancel}>
         <div>
           {groupLoading ? (
             <Facebook />
@@ -533,14 +465,8 @@ export default function SingleChat() {
                   <div key={index}>
                     <Members
                       name={userMapping.username}
-                      isAdmin={
-                        userMapping.userId === groupData.adminId ? true : false
-                      }
-                      userImage={
-                        userMapping.userImage
-                          ? bufferToImage(userMapping.userImage)
-                          : null
-                      }
+                      isAdmin={userMapping.userId === groupData.adminId ? true : false}
+                      userImage={userMapping.userImage ? bufferToImage(userMapping.userImage) : null}
                     />
                   </div>
                 ))}
@@ -549,7 +475,6 @@ export default function SingleChat() {
           )}
         </div>
       </Modal>
-      {/* dialog to handle groupExit functionality */}
       <React.Fragment>
         <Dialog
           open={open}
@@ -558,21 +483,14 @@ export default function SingleChat() {
           aria-describedby="alert-dialog-description"
           style={{ color: "red" }}
         >
-          <DialogTitle id="alert-dialog-title">
-            {"Leave this group"}
-          </DialogTitle>
+          <DialogTitle id="alert-dialog-title">{"Leave this group"}</DialogTitle>
           <DialogContent>
             <DialogContentText id="alert-dialog-description">
               Are you sure you want to leave this group, this cannot be undone?
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-            <Button
-              onClick={() => {
-                handleClose();
-                exitGroupChat();
-              }}
-            >
+            <Button onClick={() => { handleClose(); exitGroupChat(); }}>
               {" "}
               Agree
             </Button>
@@ -582,7 +500,6 @@ export default function SingleChat() {
           </DialogActions>
         </Dialog>
       </React.Fragment>
-
       {viewEmoji ? (
         <div
           className={"messages-container" + (lightTheme ? "" : " dark")}
@@ -590,9 +507,7 @@ export default function SingleChat() {
         >
           {" "}
           <EmojiPicker
-            onEmojiClick={(e) => {
-              setMessageContent((prevContent) => prevContent + e.emoji);
-            }}
+            onEmojiClick={(e) => { setMessageContent((prev) => prev + e.emoji); }}
             width="100%"
             height="100%"
             theme={lightTheme ? null : "dark"}
@@ -603,17 +518,17 @@ export default function SingleChat() {
           />{" "}
         </div>
       ) : null}
-{showAddMember && (
-  <AddMember
-    open={showAddMember}
-    onClose={() => setShowAddMember(false)}
-    groupId={ChatInfo._id}
-    existingMembers={(ChatInfo && ChatInfo.users) ? ChatInfo.users.map(user => user._id) : []}
-    onMembersAdded={(updatedGroup) => {
-      console.log("New members added:", updatedGroup);
-    }}
-  />
-)}
+      {showAddMember && (
+        <AddMember
+          open={showAddMember}
+          onClose={() => setShowAddMember(false)}
+          groupId={ChatInfo._id}
+          existingMembers={(ChatInfo && ChatInfo.users) ? ChatInfo.users.map(user => user._id) : []}
+          onMembersAdded={(updatedGroup) => {
+            console.log("New members added:", updatedGroup);
+          }}
+        />
+      )}
     </>
   );
 }
