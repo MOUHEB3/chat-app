@@ -30,6 +30,10 @@ import { SendingMsg, bufferToImage } from "./Utils";
 import { useSelector } from "react-redux";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
+import AddIcon from "@mui/icons-material/Add";
+import AddMember from "./AddMember"; 
+
+
 const URL = process.env.REACT_APP_API_KEY;
 var socket;
 export default function SingleChat() {
@@ -39,6 +43,7 @@ export default function SingleChat() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [groupData, setGroupData] = useState(null);
   const [open, setOpen] = React.useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
   const { MasterRefresh, setMasterRefresh, setNotifications } =
     useContext(RefreshContext);
   const [otherUsersTyping, setOtherUsersTyping] = useState([]);
@@ -173,8 +178,7 @@ export default function SingleChat() {
         return newUsers;
       });
     });
-  }, [setOnlineUsers, userId]); 
-
+  }, [setOnlineUsers, userId]);
 
   // new message received //
   useEffect(() => {
@@ -236,8 +240,7 @@ export default function SingleChat() {
     return () => {
       socket.off("message received", handleNewMessage);
     };
-  }, [allMessagesCopy, userId, ChatInfo._id, setNotifications]);  
-
+  }, [allMessagesCopy, userId, ChatInfo._id, setNotifications]);
 
   // fetching messages of a particular chat //
   useEffect(() => {
@@ -253,8 +256,7 @@ export default function SingleChat() {
       axios
         .get(`${URL}/message/${ChatInfo._id}`, config)
         .then(({ data }) => {
-          if (data.length === 0) {  
-
+          if (data.length === 0) {
             setLoading(false);
             setAllMessagesCopy([]);
             socket.emit("join chat", ChatInfo._id);
@@ -273,9 +275,7 @@ export default function SingleChat() {
           setLoading(false);
         });
     }
-  }, [navigate, ChatInfo._id, userId]);  // ✅ Added 'userId' to the dependency array
-
-
+  }, [navigate, ChatInfo._id, userId]); // ✅ Added 'userId' to the dependency array
 
   // Fetch group info//
   useEffect(() => {
@@ -339,7 +339,7 @@ export default function SingleChat() {
     };
 
     fetchData();
-  }, [ChatInfo.isGroup, ChatInfo._id, navigate, userId]);  // ✅ Added 'navigate' and 'userId'
+  }, [ChatInfo.isGroup, ChatInfo._id, navigate, userId]); // ✅ Added 'navigate' and 'userId'
 
   //exiting groups//
   const exitGroupChat = async () => {
@@ -366,6 +366,7 @@ export default function SingleChat() {
       console.error("Error:", error);
     }
   };
+
   // Listen for the "typing" event from other users
   // React component
   useEffect(() => {
@@ -381,7 +382,6 @@ export default function SingleChat() {
       }
     });
 
-    // Listen for the "stop typing" event from other users
     socket.on("stop typing", (room) => {
       if (room === ChatInfo._id) {
         setOtherUsersTyping((prevTyping) =>
@@ -397,7 +397,6 @@ export default function SingleChat() {
     };
   }, [ChatInfo._id]);
 
-
   return (
     <>
       <div className={"chatArea-header" + (lightTheme ? "" : " dark")}>
@@ -409,7 +408,9 @@ export default function SingleChat() {
               src={ChatInfo.otherUserImage}
             />
           ) : (
-            <p className="con-icon"> {ChatInfo.name && ChatInfo.name[0]} </p>
+            <p className="con-icon">
+              {ChatInfo.name && ChatInfo.name[0]}
+            </p>
           )}
         </IconButton>
         <div className="header-text">
@@ -500,6 +501,8 @@ export default function SingleChat() {
           <SendIcon className={"icon" + (lightTheme ? "" : " dark")} />
         </IconButton>
       </div>
+
+      {/* Group Info Modal */}
       <Modal
         title="Group Info"
         open={isModalOpen}
@@ -512,6 +515,20 @@ export default function SingleChat() {
           ) : (
             groupData && (
               <div>
+                {/* ADDED: Add Member Button Container inside Group Info */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <h3>Group Members</h3>
+                  <IconButton onClick={() => setShowAddMember(true)}>
+                    <AddIcon />
+                  </IconButton>
+                </div>
                 {groupData.userMappings.map((userMapping, index) => (
                   <div key={index}>
                     <Members
@@ -550,7 +567,12 @@ export default function SingleChat() {
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-          <Button onClick={() => { handleClose(); exitGroupChat(); }}>
+            <Button
+              onClick={() => {
+                handleClose();
+                exitGroupChat();
+              }}
+            >
               {" "}
               Agree
             </Button>
@@ -581,6 +603,17 @@ export default function SingleChat() {
           />{" "}
         </div>
       ) : null}
+{showAddMember && (
+  <AddMember
+    open={showAddMember}
+    onClose={() => setShowAddMember(false)}
+    groupId={ChatInfo._id}
+    existingMembers={(ChatInfo && ChatInfo.users) ? ChatInfo.users.map(user => user._id) : []}
+    onMembersAdded={(updatedGroup) => {
+      console.log("New members added:", updatedGroup);
+    }}
+  />
+)}
     </>
   );
 }

@@ -50,7 +50,7 @@ const fetchChats = handler(async (req, res) => {
       .populate("users", "-password")
       .populate("groupAdmin", "-password")
       .populate("latestMessage")
-      .sort({ updateAt: -1 })
+      .sort({ updatedAt: -1 })
       .then(async (results) => {
         results = await User.populate(results, {
           path: "latestMessage.sender",
@@ -63,6 +63,7 @@ const fetchChats = handler(async (req, res) => {
     throw new Error(error.message);
   }
 });
+
 const fetchGroups = handler(async (req, res) => {
   try {
     const allGroups = await Chat.where("isGroupChat").equals(true);
@@ -72,6 +73,7 @@ const fetchGroups = handler(async (req, res) => {
     throw new Error(error.message);
   }
 });
+
 const createGroupChat = handler(async (req, res) => {
   if (!req.body.users || !req.body.name) {
     return res.status(400).send({ message: "Data is insufficient" });
@@ -99,6 +101,7 @@ const createGroupChat = handler(async (req, res) => {
     throw new Error(error.message);
   }
 });
+
 const groupExit = handler(async (req, res) => {
   const { chatId, userId } = req.body;
 
@@ -121,6 +124,7 @@ const groupExit = handler(async (req, res) => {
     res.json(removed);
   }
 });
+
 const addSelfGroup = handler(async (req, res) => {
   const { chatId, userId } = req.body;
   const added = await Chat.findByIdAndUpdate(
@@ -141,6 +145,7 @@ const addSelfGroup = handler(async (req, res) => {
     res.json(added);
   }
 });
+
 const addMemberToGroup = handler(async (req, res) => {
   const { groupId, usersToAdd } = req.body;
 

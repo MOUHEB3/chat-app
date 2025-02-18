@@ -9,14 +9,19 @@ const {
   groupExit,
   addSelfGroup,
   addMemberToGroup,
-  getUsersInGroup
+  getUsersInGroup,
 } = require("../Controllers/chatControllers");
+
+// Chat Routes
 Router.route("/").post(protect, accessChat);
 Router.route("/").get(protect, fetchChats);
+
+// Group Chat Routes
 Router.route("/createGroup").post(protect, createGroupChat);
 Router.route("/fetchGroups").get(protect, fetchGroups);
 Router.route("/groupExit").put(protect, groupExit);
 Router.route("/addSelfToGroup").put(protect, addSelfGroup);
 Router.route("/addMember").put(protect, addMemberToGroup);
-Router.route("/groupInfo").post(protect,getUsersInGroup );
+Router.route("/groupInfo").post(protect, getUsersInGroup);
+
 module.exports = Router;

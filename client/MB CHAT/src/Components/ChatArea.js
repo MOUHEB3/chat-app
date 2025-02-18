@@ -3,9 +3,11 @@ import SingleChat from "./SingleChat";
 import { ChatContext } from "../App";
 
 export default function ChatArea() {
-  const chatContextValue = useContext(ChatContext); // Use the context
+  const chatContextValue = useContext(ChatContext);
 
-  return <div className="chatArea-container">
-    <SingleChat chatData={chatContextValue} /> {/* Pass context data if needed */}
-  </div>;
+  return (
+    <div className="chatArea-container">
+      <SingleChat chatData={chatContextValue} />
+    </div>
+  );
 }

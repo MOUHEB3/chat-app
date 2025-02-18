@@ -1,5 +1,6 @@
 const express = require("express");
 const userModel = require("../Models/userModel");
+const Chat = require("../Models/chatModel"); // Import Chat model
 const handler = require("express-async-handler");
 const generateToken = require("../Config/generateToken");
 
@@ -7,25 +8,22 @@ const loginController = handler(async (req, res) => {
   const { name, password } = req.body;
   const user = await userModel.findOne({ name });
   if (user && (await user.matchPassword(password))) {
-
     const imageBase64 = user.image ? user.image.toString('base64') : null;
     const response = {
       _id: user._id,
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
-      image : imageBase64,
+      image: imageBase64,
       token: generateToken(user._id),
-      
     };
     res.json(response);
   } else {
     res.status(401);
-    throw new Error("invalid username and password");
+    throw new Error("Invalid username and password");
   }
 });
 
-//registration controller///
 const registerController = handler(async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -36,28 +34,25 @@ const registerController = handler(async (req, res) => {
       return;
     }
 
-    // Check if the email already exists
     const emailExist = await userModel.findOne({ email });
     if (emailExist) {
       res.status(400).json({ error: "Email already exists" });
       return;
     }
 
-    // Check for username
     const userExist = await userModel.findOne({ name });
     if (userExist) {
       res.status(400).json({ error: "Username already exists" });
       return;
     }
 
-    // Create entry in the database
     let user;
     if (image) {
       user = await userModel.create({
         name,
         email,
         password,
-        image :image.buffer,
+        image: image.buffer,
       });
     } else {
       user = await userModel.create({ name, email, password });
@@ -92,4 +87,31 @@ const fetchAllUsersController = handler(async (req, res) => {
   res.send(users);
 });
 
-module.exports = { registerController, loginController , fetchAllUsersController};
+// Fetch users who are not in a specific group
+const fetchUsersNotInGroup = handler(async (req, res) => {
+  const { groupId } = req.query; // Get groupId from query params
+
+  if (!groupId) {
+    return res.status(400).json({ message: "Group ID is required" });
+  }
+
+  try {
+    // Find the group and get its users
+    const group = await Chat.findById(groupId).populate("users", "_id");
+
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // Get all users **excluding** the ones already in the group
+    const users = await userModel.find({
+      _id: { $nin: group.users }, // Exclude users in the group
+    });
+
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+module.exports = { registerController, loginController, fetchAllUsersController, fetchUsersNotInGroup };
