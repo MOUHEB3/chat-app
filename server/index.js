@@ -6,6 +6,7 @@ const userRoutes = require("./Routes/userRoutes");
 const chatRoutes = require("./Routes/chatRoutes");
 const messageRoutes = require("./Routes/messageRoutes");
 const cors = require("cors");
+app.use("/api/chat", chatRoutes);
 
 app.use(
   cors({
