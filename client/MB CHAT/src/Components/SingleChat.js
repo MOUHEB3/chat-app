@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useContext, useRef } from "react";
-import { IconButton } from "@mui/material";
+import { IconButton, Button, Alert, AlertTitle } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import MessageOthers from "./MessageOthers";
 import SelfMessage from "./SelfMessage";
-import Button from "@mui/material/Button";
 import "./myStyle.css";
 import axios from "axios";
 import io from "socket.io-client";
@@ -17,25 +16,23 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import { useNavigate } from "react-router-dom";
-import { RefreshContext } from "../App";
+import { RefreshContext, ChatContext } from "../App";
 import { Ring, Chatsound } from "./Sounds/PlaySounds";
 import EmojiPicker from "emoji-picker-react";
 import Facebook from "./Skeleton";
 import AddReactionSharpIcon from "@mui/icons-material/AddReactionSharp";
 import ClearSharpIcon from "@mui/icons-material/ClearSharp";
 import Avatar from "@mui/material/Avatar";
-import { ChatContext } from "../App";
 import Typing from "./Typing";
 import { SendingMsg, bufferToImage } from "./Utils";
 import { useSelector } from "react-redux";
-import Alert from "@mui/material/Alert";
-import AlertTitle from "@mui/material/AlertTitle";
 import AddIcon from "@mui/icons-material/Add";
 import AddMember from "./AddMember";
 import DeleteIcon from "@mui/icons-material/Delete";
+import SelectAllIcon from "@mui/icons-material/SelectAll";
 
 const URL = process.env.REACT_APP_API_KEY;
-var socket;
+let socket;
 
 export default function SingleChat() {
   const [messageContent, setMessageContent] = useState("");
@@ -51,14 +48,46 @@ export default function SingleChat() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [viewEmoji, setViewEmoji] = useState(false);
-  const { onlineUsers, setOnlineUsers } = useContext(ChatContext);
+  const { onlineUsers, setOnlineUsers, ChatInfo, setChatInfo } = useContext(ChatContext);
   const [groupLoading, setGroupLoading] = useState(false);
   const [sendingMsg, setSendingMsg] = useState(false);
   const lightTheme = useSelector((state) => state.themeKey);
   const [messageLoadingContent, setmessageLoadingcontent] = useState([""]);
   const [showAlert, setShowalert] = useState(false);
   const scrollableDivRef = useRef(null);
-  const { ChatInfo, setChatInfo } = useContext(ChatContext);
+
+  // New state for selection mode and selected messages
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState([]);
+
+  // Toggle selection for a message
+  const toggleSelection = (messageId) => {
+    setSelectedMessages((prev) =>
+      prev.includes(messageId)
+        ? prev.filter((id) => id !== messageId)
+        : [...prev, messageId]
+    );
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = async () => {
+    if (selectedMessages.length === 0) return;
+    try {
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await axios.delete(
+        `${URL}/message/bulk`,
+        { data: { messageIds: selectedMessages }, ...config }
+      );
+      setAllMessagesCopy((prevMessages) =>
+        prevMessages.filter((msg) => !selectedMessages.includes(msg._id))
+      );
+      setSelectedMessages([]);
+      setSelectionMode(false);
+    } catch (error) {
+      console.error("Error bulk deleting messages:", error);
+    }
+  };
 
   // If ChatInfo is empty, try to load from local storage
   useEffect(() => {
@@ -76,17 +105,14 @@ export default function SingleChat() {
     // Reset messages when component mounts
   }, []);
 
-  // Delete Chat handler: Sends DELETE request and navigates back
+  // Delete Chat handler: calls the delete endpoint to clear the chat for you
   const handleDeleteChat = async () => {
     try {
       const token = localStorage.getItem("token");
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.delete(`${URL}/chats/${ChatInfo._id}`, config);
-      // Optionally, you can emit a socket event here if needed.
+
+      setMasterRefresh((prev) => !prev);
       setChatInfo({});
       navigate("/app/welcome");
     } catch (error) {
@@ -108,22 +134,11 @@ export default function SingleChat() {
     }
   };
 
-  const handleClickOpen = () => {
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
-  const showModal = () => {
-    setIsModalOpen(true);
-  };
-  const handleOk = () => {
-    setIsModalOpen(false);
-  };
-  const handleCancel = () => {
-    setIsModalOpen(false);
-  };
+  const handleClickOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  const showModal = () => setIsModalOpen(true);
+  const handleOk = () => setIsModalOpen(false);
+  const handleCancel = () => setIsModalOpen(false);
 
   const scrollDown = () => {
     if (scrollableDivRef.current) {
@@ -143,19 +158,12 @@ export default function SingleChat() {
       return;
     }
 
-    const config = {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
+    const config = { headers: { Authorization: `Bearer ${token}` } };
 
     axios
       .post(
         `${URL}/message/`,
-        {
-          content: messageContent,
-          chatId: ChatInfo._id,
-        },
+        { content: messageContent, chatId: ChatInfo._id },
         config
       )
       .then(({ data }) => {
@@ -178,13 +186,13 @@ export default function SingleChat() {
     socket = io(URL);
     socket.emit("setup", userId);
     socket.on("connected", () => {});
-    socket.on("user online", (userId) => {
-      setOnlineUsers((prevUsers) => new Set([...prevUsers, userId]));
+    socket.on("user online", (uId) => {
+      setOnlineUsers((prevUsers) => new Set([...prevUsers, uId]));
     });
-    socket.on("user offline", (userId) => {
+    socket.on("user offline", (uId) => {
       setOnlineUsers((prevUsers) => {
         const newUsers = new Set(prevUsers);
-        newUsers.delete(userId);
+        newUsers.delete(uId);
         return newUsers;
       });
     });
@@ -221,8 +229,6 @@ export default function SingleChat() {
                 .map((obj) => obj.image)[0],
             },
           ]);
-        }
-        if (ChatInfo._id !== newMessage.chat._id) {
           Chatsound();
         }
       }
@@ -233,15 +239,28 @@ export default function SingleChat() {
     };
   }, [allMessagesCopy, userId, ChatInfo._id, setNotifications]);
 
-  // Fetching messages for this chat
+  // Listen for "messageDeleted" events and remove the deleted message
+  useEffect(() => {
+    const handleMessageDeleted = (data) => {
+      if (ChatInfo._id === data.chatId) {
+        setAllMessagesCopy((prevMessages) =>
+          prevMessages.filter((message) => message._id !== data.messageId)
+        );
+      }
+    };
+
+    socket.on("messageDeleted", handleMessageDeleted);
+
+    return () => {
+      socket.off("messageDeleted", handleMessageDeleted);
+    };
+  }, [ChatInfo._id]);
+
+  // Fetch messages for this chat
   useEffect(() => {
     setLoading(true);
     if (ChatInfo._id) {
-      const config = {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      };
+      const config = { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } };
 
       axios
         .get(`${URL}/message/${ChatInfo._id}`, config)
@@ -255,7 +274,6 @@ export default function SingleChat() {
           if (!data[0].chat.users.includes(userId)) {
             navigate("/app/welcome");
           }
-
           setAllMessagesCopy(data);
           socket.emit("join chat", ChatInfo._id);
           setLoading(false);
@@ -319,16 +337,14 @@ export default function SingleChat() {
     fetchData();
   }, [ChatInfo.isGroup, ChatInfo._id, navigate, userId]);
 
+  // Exit group chat
   const exitGroupChat = async () => {
     const url = `${URL}/chats/groupExit`;
     const headers = {
       Authorization: `Bearer ${localStorage.getItem("token")}`,
       "Content-Type": "application/json",
     };
-    const data = {
-      chatId: ChatInfo._id,
-      userId: userId,
-    };
+    const data = { chatId: ChatInfo._id, userId };
     try {
       await axios.put(url, data, { headers });
       navigate("/app/welcome");
@@ -365,30 +381,74 @@ export default function SingleChat() {
 
   return (
     <>
-      {/* Header Bar with Chat Info and Delete Chat Button */}
-      <div className={"chatArea-header" + (lightTheme ? "" : " dark")}>
-        <IconButton onClick={ChatInfo.isGroup ? showModal : null}>
-          {ChatInfo.otherUserImage && !ChatInfo.isGroup ? (
-            <Avatar
-              className="con-icon"
-              sx={{ width: 52, height: 52, borderRadius: 15 }}
-              src={ChatInfo.otherUserImage}
-            />
-          ) : (
-            <p className="con-icon">
-              {ChatInfo.name && ChatInfo.name[0]}
+      <div
+        className={"chatArea-header" + (lightTheme ? "" : " dark")}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <IconButton onClick={ChatInfo.isGroup ? showModal : null}>
+            {ChatInfo.otherUserImage && !ChatInfo.isGroup ? (
+              <Avatar
+                className="con-icon"
+                sx={{ width: 52, height: 52, borderRadius: 15 }}
+                src={ChatInfo.otherUserImage}
+              />
+            ) : (
+              <p className="con-icon">{ChatInfo.name && ChatInfo.name[0]}</p>
+            )}
+          </IconButton>
+          <div className="header-text">
+            <p
+              className="con-title"
+              style={{
+                color: lightTheme ? "black" : "white",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              {ChatInfo.name}
+              {/* Delete Chat button */}
+              <IconButton
+                onClick={handleDeleteChat}
+                title="Delete Chat"
+                size="small"
+              >
+                <DeleteIcon
+                  style={{
+                    color: "red",
+                    marginLeft: "0.5rem",
+                    fontSize: "1rem",
+                  }}
+                />
+              </IconButton>
+              {/* Toggle selection mode button */}
+              <IconButton
+                onClick={() => {
+                  setSelectionMode((prev) => !prev);
+                  setSelectedMessages([]);
+                }}
+                title={selectionMode ? "Cancel selection" : "Select messages"}
+                size="small"
+              >
+                <SelectAllIcon
+                  style={{
+                    color: selectionMode ? "red" : lightTheme ? "black" : "white",
+                    marginLeft: "0.5rem",
+                    fontSize: "1rem",
+                  }}
+                />
+              </IconButton>
             </p>
-          )}
-        </IconButton>
-        <div className="header-text">
-          <p className="con-title" style={{ color: lightTheme ? "black" : "white" }}>
-            {ChatInfo.name}
-          </p>
-          <p style={{ color: lightTheme ? "black" : "white" }}>
-            {onlineUsers.has(ChatInfo.otherUser) && !ChatInfo.isGroup
-              ? "online"
-              : null}
-          </p>
+            <p style={{ color: lightTheme ? "black" : "white" }}>
+              {onlineUsers.has(ChatInfo.otherUser) && !ChatInfo.isGroup
+                ? "online"
+                : null}
+            </p>
+          </div>
         </div>
         <div className="header-actions">
           {ChatInfo.isGroup && (
@@ -396,14 +456,27 @@ export default function SingleChat() {
               <LogoutIcon />
             </IconButton>
           )}
-          {/* Delete Chat Button */}
-          <IconButton onClick={handleDeleteChat} title="Delete Chat">
-            <DeleteIcon style={{ color: "red" }} />
-          </IconButton>
         </div>
       </div>
 
-      <div className={"messages-container" + (lightTheme ? "" : " dark")} ref={scrollableDivRef}>
+      {/* Bulk delete button (visible when selection mode is active) */}
+      {selectionMode && (
+        <div style={{ padding: "0.5rem", textAlign: "right" }}>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleBulkDelete}
+            disabled={selectedMessages.length === 0}
+          >
+            Delete Selected ({selectedMessages.length})
+          </Button>
+        </div>
+      )}
+
+      <div
+        className={"messages-container" + (lightTheme ? "" : " dark")}
+        ref={scrollableDivRef}
+      >
         {showAlert && (
           <Alert
             severity="error"
@@ -414,9 +487,7 @@ export default function SingleChat() {
             check your network connection.
           </Alert>
         )}
-        {otherUsersTyping.length > 0 && ChatInfo.isGroup === false ? (
-          <Typing />
-        ) : null}
+        {otherUsersTyping.length > 0 && !ChatInfo.isGroup ? <Typing /> : null}
         {sendingMsg ? <SendingMsg content={messageLoadingContent} /> : null}
         {loading ? (
           <MessageSkeleton />
@@ -424,13 +495,18 @@ export default function SingleChat() {
           allMessagesCopy
             .slice()
             .reverse()
-            .map((message, index) =>
-              message.sender._id === userId ? (
-                <SelfMessage key={index} props={message} />
+            .map((message, index) => {
+              const commonProps = {
+                selectable: selectionMode,
+                isSelected: selectedMessages.includes(message._id),
+                onToggleSelect: () => toggleSelection(message._id),
+              };
+              return message.sender._id === userId ? (
+                <SelfMessage key={index} props={message} {...commonProps} />
               ) : (
-                <MessageOthers key={index} props={message} />
-              )
-            )
+                <MessageOthers key={index} props={message} {...commonProps} />
+              );
+            })
         )}
       </div>
       <div className={"text-input-Area" + (lightTheme ? "" : " dark")}>
@@ -488,8 +564,12 @@ export default function SingleChat() {
                   <div key={index}>
                     <Members
                       name={userMapping.username}
-                      isAdmin={userMapping.userId === groupData.adminId ? true : false}
-                      userImage={userMapping.userImage ? bufferToImage(userMapping.userImage) : null}
+                      isAdmin={userMapping.userId === groupData.adminId}
+                      userImage={
+                        userMapping.userImage
+                          ? bufferToImage(userMapping.userImage)
+                          : null
+                      }
                     />
                   </div>
                 ))}
@@ -498,53 +578,60 @@ export default function SingleChat() {
           )}
         </div>
       </Modal>
-      <React.Fragment>
-        <Dialog
-          open={open}
-          onClose={handleClose}
-          aria-labelledby="alert-dialog-title"
-          aria-describedby="alert-dialog-description"
-          style={{ color: "red" }}
-        >
-          <DialogTitle id="alert-dialog-title">{"Leave this group"}</DialogTitle>
-          <DialogContent>
-            <DialogContentText id="alert-dialog-description">
-              Are you sure you want to leave this group, this cannot be undone?
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => { handleClose(); exitGroupChat(); }}>
-              Agree
-            </Button>
-            <Button onClick={handleClose} autoFocus>
-              Disagree
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </React.Fragment>
-      {viewEmoji ? (
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+        style={{ color: "red" }}
+      >
+        <DialogTitle id="alert-dialog-title">{"Leave this group"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to leave this group? This cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              handleClose();
+              exitGroupChat();
+            }}
+          >
+            Agree
+          </Button>
+          <Button onClick={handleClose} autoFocus>
+            Disagree
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {viewEmoji && (
         <div
           className={"messages-container" + (lightTheme ? "" : " dark")}
           style={{ marginTop: "0", flex: 3 }}
         >
           <EmojiPicker
-            onEmojiClick={(e) => { setMessageContent((prev) => prev + e.emoji); }}
+            onEmojiClick={(e) => setMessageContent((prev) => prev + e.emoji)}
             width="100%"
             height="100%"
             theme={lightTheme ? null : "dark"}
-            searchDisabled={true}
+            searchDisabled
             emojiStyle="native"
             lazyLoadEmojis={false}
             autoFocusSearch={false}
           />
         </div>
-      ) : null}
+      )}
       {showAddMember && (
         <AddMember
           open={showAddMember}
           onClose={() => setShowAddMember(false)}
           groupId={ChatInfo._id}
-          existingMembers={(ChatInfo && ChatInfo.users) ? ChatInfo.users.map(user => user._id) : []}
+          existingMembers={
+            ChatInfo && ChatInfo.users
+              ? ChatInfo.users.map((u) => u._id)
+              : []
+          }
           onMembersAdded={(updatedGroup) => {
             console.log("New members added:", updatedGroup);
           }}

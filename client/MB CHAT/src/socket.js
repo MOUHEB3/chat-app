@@ -32,7 +32,12 @@ socket.on("chatDeleted", (data) => {
 // Listen for real-time message deletion events
 socket.on("messageDeleted", (data) => {
   console.log("Message deleted event received:", data);
-  // Here, you can dispatch an action or update state to remove the message from your UI.
+  // Here, you can dispatch an action or update your state to remove the deleted message.
+  // Example (if using Redux):
+  // store.dispatch(removeMessage(data.messageId));
+  //
+  // Or if using React state, call a function to update your state:
+  // updateMessages(prevMessages => prevMessages.filter(msg => msg._id !== data.messageId));
 });
 
 // Log disconnections.

@@ -10,12 +10,16 @@ import socket from "../socket";
 
 function ConversationsItem({ props }) {
   const [entryCount, setEntryCount] = useState(0);
-  // Local state to control whether this conversation should be visible
   const [visible, setVisible] = useState(true);
+
+  // NEW: Force a re-mount key that changes on new message
+  const [forceRemountKey, setForceRemountKey] = useState(0);
+
   const lightTheme = useSelector((state) => state.themeKey);
   const navigate = useNavigate();
   const { setChatInfo, onlineUsers } = useContext(ChatContext);
   const { notifications, setNotifications } = useContext(RefreshContext);
+
   const iconName = props.name ? props.name[0] : "";
   const title = props.name || "";
   const lastMessage = props.lastMessage || "start a new chat";
@@ -32,23 +36,35 @@ function ConversationsItem({ props }) {
     setEntryCount(count);
   }, [notifications, props._id]);
 
-  // Listen for real-time chat deletion events
+  // Listen for real-time chat deletion
   useEffect(() => {
     const handleChatDeleted = (data) => {
-      // If the deleted chat id matches this conversation's id, mark it as not visible.
       if (data.chatId === props._id) {
         setVisible(false);
       }
     };
-
     socket.on("chatDeleted", handleChatDeleted);
-
     return () => {
       socket.off("chatDeleted", handleChatDeleted);
     };
   }, [props._id]);
 
-  // If conversation has been deleted, do not render anything.
+  // NEW: Listen for new messages that belong to this conversation
+  useEffect(() => {
+    const handleNewMessage = (data) => {
+      // If the incoming message belongs to this conversation's ID
+      if (data.chat && data.chat._id === props._id) {
+        // Force a re-mount by changing our key
+        setForceRemountKey((prev) => prev + 1);
+      }
+    };
+    socket.on("new message", handleNewMessage);
+
+    return () => {
+      socket.off("new message", handleNewMessage);
+    };
+  }, [props._id]);
+
   if (!visible) {
     return null;
   }
@@ -81,6 +97,7 @@ function ConversationsItem({ props }) {
 
   return (
     <div
+      key={forceRemountKey} // <-- Force re-mount whenever forceRemountKey changes
       className="conversation-container"
       onClick={() => {
         localStorage.setItem("conversations", JSON.stringify(props));
@@ -106,7 +123,10 @@ function ConversationsItem({ props }) {
         <p className="con-icon">{iconName}</p>
       )}
 
-      <p className="con-title" style={{ color: lightTheme ? "black" : "white" }}>
+      <p
+        className="con-title"
+        style={{ color: lightTheme ? "black" : "white" }}
+      >
         {title}{" "}
       </p>
       <p

@@ -1,5 +1,3 @@
-// chatRoutes.js
-
 import express from "express";
 import protect from "../middleware/authMiddleWare.js";
 import {
@@ -11,7 +9,8 @@ import {
   addSelfGroup,
   addMemberToGroup,
   getUsersInGroup,
-  deleteChat, // Added deleteChat controller
+  deleteChat,
+
 } from "../Controllers/chatControllers.js";
 
 const Router = express.Router();
@@ -27,6 +26,11 @@ Router.route("/groupExit").put(protect, groupExit);
 Router.route("/addSelfToGroup").put(protect, addSelfGroup);
 Router.route("/addMember").put(protect, addMemberToGroup);
 Router.route("/groupInfo").post(protect, getUsersInGroup);
+
+// Delete chat (clear for the current user)
 Router.route("/:chatId").delete(protect, deleteChat);
+
+
+
 
 export default Router;

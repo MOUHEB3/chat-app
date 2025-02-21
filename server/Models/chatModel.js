@@ -24,11 +24,15 @@ const chatSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    // For each user, record the time after which they only see new messages
+    clearedFor: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        clearedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const Chat = mongoose.model("Chat", chatSchema);
-export default Chat;
+export default mongoose.model("Chat", chatSchema);

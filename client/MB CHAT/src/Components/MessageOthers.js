@@ -7,8 +7,6 @@ export default function MessageOthers({ props }) {
 
   // Force 24-hour format using the user's local time zone
   const options = { hour: "2-digit", minute: "2-digit", hour12: false };
-  // Passing an empty array or `undefined` as the first argument
-  // ensures it uses the user's default locale & time zone.
   const formattedTime = date.toLocaleTimeString([], options);
 
   const isGroup = props.chat.isGroupChat;
@@ -34,22 +32,13 @@ export default function MessageOthers({ props }) {
             word-break: break-word;
             overflow-wrap: anywhere;
             position: relative;
-            padding-bottom: 20px; /* If you want bottom padding for an absolute-positioned time */
+            padding-bottom: 20px; /* Provides bottom padding for the timestamp */
           }
 
           .other-text-content {
             /* Additional styling if needed */
           }
 
-          /* If you want the time at bottom-right inside the bubble: 
-             .self-timeStamp {
-               position: absolute;
-               bottom: 5px;
-               right: 10px;
-               font-size: 0.75rem;
-               margin: 0;
-             }
-          */
           .self-timeStamp {
             font-size: 0.75rem;
             margin-top: 5px;

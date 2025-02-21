@@ -1,5 +1,3 @@
-// protect.js
-
 import jwt from "jsonwebtoken";
 import User from "../Models/userModel.js";
 import handler from "express-async-handler";

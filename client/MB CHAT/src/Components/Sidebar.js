@@ -21,6 +21,7 @@ import Avatar from "@mui/material/Avatar";
 import { ChatContext } from "../App";
 import MarkChatUnreadSharpIcon from "@mui/icons-material/MarkChatUnreadSharp";
 import empty from "./Images/empty2.png";
+import socket from "../socket"; // Import your shared socket instance
 
 export default function Sidebar() {
   const URL = process.env.REACT_APP_API_KEY;
@@ -36,12 +37,14 @@ export default function Sidebar() {
   const open = Boolean(anchorEl);
   const { setChatInfo } = useContext(ChatContext);
   const [loading, setLoading] = useState(false);
+
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
   const handleClose = () => {
     setAnchorEl(null);
   };
+
   function bufferToImage(buffer) {
     const uint8Array = new Uint8Array(buffer.data);
     const binaryString = uint8Array.reduce(
@@ -52,23 +55,17 @@ export default function Sidebar() {
     const imageSrc = `data:${buffer.type};base64,${base64String}`;
     return imageSrc;
   }
-  /// handling notifications//
+
+  /// handling notifications
   const removeNotification = (chatId) => {
-    // Filter out the notification with the given ChatId
     const updatedNotifications = notifications.filter(
       (notification) => notification.ChatId !== chatId
     );
-
-    // Update the notifications array using setNotifications
     setNotifications(updatedNotifications);
   };
 
-  //handling notification data localStorage access ///
   const storeNotificationInLocalStorage = (notification) => {
     try {
-      // Get existing conversations from local storage
-
-      // Create a new object with modified values
       const modifiedNotification = {
         type: notification.type,
         content: notification.content,
@@ -80,7 +77,6 @@ export default function Sidebar() {
         otherUser: notification.senderId,
         otherUserImage: bufferToImage(notification.otherUserImage),
       };
-
       localStorage.setItem(
         "conversations",
         JSON.stringify(modifiedNotification)
@@ -90,6 +86,7 @@ export default function Sidebar() {
     }
   };
 
+  // Fetch conversations from API and filter out deleted ones
   useEffect(() => {
     setLoading(true);
     const fetchConversations = async () => {
@@ -100,23 +97,25 @@ export default function Sidebar() {
           },
         });
         setLoading(false);
-
         if (response.data.length === 0) {
           return;
         }
-        const formattedConversations = response.data.map((chat) => {
+        const currentUserId = localStorage.getItem("userId");
+        // Filter out chats where current user has soft-deleted them
+        const activeChats = response.data.filter((chat) => {
+          return !chat.deletedBy || !chat.deletedBy.includes(currentUserId);
+        });
+
+        const formattedConversations = activeChats.map((chat) => {
           const isGroupChat = chat.isGroupChat;
           let chatName = isGroupChat ? chat.chatName : "";
-
           if (!isGroupChat) {
-            // Find the other user's name in one-on-one chats
             const otherUser =
               chat.users.find(
                 (u) => u._id !== localStorage.getItem("userId")
               ) || chat.users[0];
             chatName = otherUser ? otherUser.name : "";
           }
-
           const lastMessage = chat.latestMessage
             ? chat.latestMessage.content
             : "";
@@ -143,26 +142,42 @@ export default function Sidebar() {
           };
         });
 
-        // Sort the array based on the createdAt timestamp of the latestMessage
+        // Sort based on latest message timestamp
         formattedConversations.sort(
           (a, b) => new Date(b.timeStamp) - new Date(a.timeStamp)
         );
-
         setConversations(formattedConversations);
-        // console.log(formattedConversations);
       } catch (error) {
         console.error("Error fetching conversations:", error);
-        // Handle error (e.g., display an error message to the user)
       }
     };
 
     fetchConversations();
-  }, [MasterRefresh,URL]);
+  }, [MasterRefresh, URL]);
 
-  // Filter conversation based on the search term
-  const filteredConversations = conversations.filter((conversation) => {
-    return conversation.name.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  // Listen for chatDeleted events to update the conversation list immediately
+  useEffect(() => {
+    const currentUserId = localStorage.getItem("userId");
+    socket.on("chatDeleted", (data) => {
+      // If the event indicates that the current user deleted the chat,
+      // remove that conversation from the list immediately.
+      if (data.userId === currentUserId) {
+        setConversations((prevConversations) =>
+          prevConversations.filter((conv) => conv._id !== data.chatId)
+        );
+      }
+    });
+    return () => {
+      socket.off("chatDeleted");
+    };
+  }, []);
+  
+
+  // Filter conversations based on search term
+  const filteredConversations = conversations.filter((conversation) =>
+    conversation.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="sidebar-container">
       <div className={"sb-header" + (lightTheme ? "" : " dark")}>
@@ -175,20 +190,20 @@ export default function Sidebar() {
               className={"icon" + (lightTheme ? "" : " dark")}
             />
           </IconButton>
-
           <IconButton onClick={() => navigate("users")}>
             <PersonAddSharpIcon
               className={"icon" + (lightTheme ? "" : " dark")}
             />
           </IconButton>
           <IconButton onClick={() => dispatch(toggleTheme())}>
-            {lightTheme && (
+            {lightTheme ? (
               <ModeNightSharpIcon
                 className={"icon" + (lightTheme ? "" : " dark")}
               />
-            )}
-            {!lightTheme && (
-              <LightModeIcon className={"icon" + (lightTheme ? "" : " dark")} />
+            ) : (
+              <LightModeIcon
+                className={"icon" + (lightTheme ? "" : " dark")}
+              />
             )}
           </IconButton>
           <IconButton onClick={handleClick}>
@@ -213,7 +228,6 @@ export default function Sidebar() {
                 <MenuItem
                   key={index}
                   onClick={() => {
-                    // console.log(notification);
                     handleClose();
                     storeNotificationInLocalStorage(notification);
                     setChatInfo(
@@ -256,11 +270,12 @@ export default function Sidebar() {
         {loading ? (
           <Facebook />
         ) : conversations.length === 0 ? (
-        <img
-        className="image-container"
-        style={{ height: "40%", width: "100%" }}
-        src={empty}
-        alt="No conversations available"/>
+          <img
+            className="image-container"
+            style={{ height: "40%", width: "100%" }}
+            src={empty}
+            alt="No conversations available"
+          />
         ) : (
           filteredConversations.map((conversation) => (
             <ConversationsItem props={conversation} key={conversation._id} />

@@ -1,7 +1,5 @@
-// messageRoutes.js
-
 import express from "express";
-import { allMessages, sendMessage, deleteMessage } from "../Controllers/messageControllers.js";
+import { allMessages, sendMessage, deleteMessage, deleteMessagesBulk } from "../Controllers/messageControllers.js";
 import protect from "../middleware/authMiddleWare.js";
 
 const router = express.Router();
@@ -12,7 +10,10 @@ router.route("/:chatId").get(protect, allMessages);
 // Route to send a new message
 router.route("/").post(protect, sendMessage);
 
-// New: DELETE route for soft deleting a message (adds user to deletedBy array)
+// New: DELETE route for bulk deleting messages
+router.route("/bulk").delete(protect, deleteMessagesBulk);
+
+// DELETE route for deleting a single message
 router.route("/:messageId").delete(protect, deleteMessage);
 
 export default router;

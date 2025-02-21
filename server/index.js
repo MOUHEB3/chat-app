@@ -57,6 +57,9 @@ const io = new Server(server, {
   pingTimeout: 60000,
 });
 
+// Store the Socket.IO instance in the Express app's locals
+app.locals.io = io;
+
 // Store online users (Map for multiple socket connections per user)
 const onlineUsers = new Map();
 
@@ -77,23 +80,40 @@ const handleUserSetup = (socket, userId) => {
   socket.join(userId);
   socket.emit("connected");
 
-  console.log(chalk.green(`🟢 User Connected: ${chalk.bold(userId)} | Socket: ${chalk.cyan(socket.id)}`));
+  console.log(
+    chalk.green(
+      `🟢 User Connected: ${chalk.bold(userId)} | Socket: ${chalk.cyan(socket.id)}`
+    )
+  );
 };
 
 // Handle joining a chat room
 const handleJoinChat = (socket, room) => {
   socket.join(room);
-  console.log(chalk.magenta(`📌 Socket ${chalk.cyan(socket.id)} joined room: ${chalk.yellow(room)}`));
+  console.log(
+    chalk.magenta(
+      `📌 Socket ${chalk.cyan(socket.id)} joined room: ${chalk.yellow(room)}`
+    )
+  );
 };
 
 // Handle typing indicators
 const handleTyping = (socket, room) => {
   socket.to(room).emit("typing", room);
-  console.log(chalk.blue(`✍️ User ${chalk.bold(socket.userId)} is typing in ${chalk.yellow(room)}`));
+  console.log(
+    chalk.blue(
+      `✍️ User ${chalk.bold(socket.userId)} is typing in ${chalk.yellow(room)}`
+    )
+  );
 };
+
 const handleStopTyping = (socket, room) => {
   socket.to(room).emit("stop typing", room);
-  console.log(chalk.gray(`✋ User ${chalk.bold(socket.userId)} stopped typing in ${chalk.yellow(room)}`));
+  console.log(
+    chalk.gray(
+      `✋ User ${chalk.bold(socket.userId)} stopped typing in ${chalk.yellow(room)}`
+    )
+  );
 };
 
 // Handle new message delivery
@@ -111,7 +131,11 @@ const handleNewMessage = (socket, newMessageStatus) => {
   });
 
   console.log(
-    chalk.green(`📩 New Message from ${chalk.bold(newMessageStatus.sender._id)} to ${chalk.yellow(chat._id)}`)
+    chalk.green(
+      `📩 New Message from ${chalk.bold(newMessageStatus.sender._id)} to ${chalk.yellow(
+        chat._id
+      )}`
+    )
   );
 };
 
@@ -143,6 +167,8 @@ io.on("connection", (socket) => {
   socket.on("join chat", (room) => handleJoinChat(socket, room));
   socket.on("typing", (room) => handleTyping(socket, room));
   socket.on("stop typing", (room) => handleStopTyping(socket, room));
-  socket.on("new message", (newMessageStatus) => handleNewMessage(socket, newMessageStatus));
+  socket.on("new message", (newMessageStatus) =>
+    handleNewMessage(socket, newMessageStatus)
+  );
   socket.on("disconnect", () => handleDisconnect(socket));
 });
