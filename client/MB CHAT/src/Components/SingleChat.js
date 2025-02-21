@@ -31,10 +31,12 @@ import { useSelector } from "react-redux";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import AddIcon from "@mui/icons-material/Add";
-import AddMember from "./AddMember"; 
+import AddMember from "./AddMember";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const URL = process.env.REACT_APP_API_KEY;
 var socket;
+
 export default function SingleChat() {
   const [messageContent, setMessageContent] = useState("");
   const userId = localStorage.getItem("userId");
@@ -58,7 +60,7 @@ export default function SingleChat() {
   const scrollableDivRef = useRef(null);
   const { ChatInfo, setChatInfo } = useContext(ChatContext);
 
-  // Moved from render to useEffect to avoid updating state during render
+  // If ChatInfo is empty, try to load from local storage
   useEffect(() => {
     if (Object.keys(ChatInfo).length === 0 && localStorage.getItem("conversations")) {
       setChatInfo(JSON.parse(localStorage.getItem("conversations")) || []);
@@ -68,10 +70,29 @@ export default function SingleChat() {
   if (!localStorage.getItem("conversations")) {
     navigate("/app/welcome");
   }
+
   useEffect(() => {
     setAllMessagesCopy([]);
-    // Set allMessagesCopy to an empty array when the component mounts
+    // Reset messages when component mounts
   }, []);
+
+  // Delete Chat handler: Sends DELETE request and navigates back
+  const handleDeleteChat = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      await axios.delete(`${URL}/chats/${ChatInfo._id}`, config);
+      // Optionally, you can emit a socket event here if needed.
+      setChatInfo({});
+      navigate("/app/welcome");
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+    }
+  };
 
   const handleTyping = () => {
     if (!typing) {
@@ -152,7 +173,7 @@ export default function SingleChat() {
       });
   };
 
-  // connecting to socket //
+  // Connecting to socket
   useEffect(() => {
     socket = io(URL);
     socket.emit("setup", userId);
@@ -169,17 +190,14 @@ export default function SingleChat() {
     });
   }, [setOnlineUsers, userId]);
 
-  // new message received //
+  // New message received
   useEffect(() => {
     const handleNewMessage = (newMessage) => {
       if (ChatInfo._id === newMessage.chat._id) {
         Ring();
         scrollDown();
       }
-      if (
-        !allMessagesCopy.length ||
-        allMessagesCopy[0]._id !== newMessage._id
-      ) {
+      if (!allMessagesCopy.length || allMessagesCopy[0]._id !== newMessage._id) {
         if (newMessage.chat._id === ChatInfo._id) {
           setAllMessagesCopy((prevMessages) => [...prevMessages, newMessage]);
         }
@@ -198,8 +216,7 @@ export default function SingleChat() {
               otherUserImage: newMessage.chat.users
                 .filter(
                   (obj) =>
-                    obj._id !== localStorage.getItem("userId") &&
-                    obj.image !== null
+                    obj._id !== localStorage.getItem("userId") && obj.image !== null
                 )
                 .map((obj) => obj.image)[0],
             },
@@ -216,7 +233,7 @@ export default function SingleChat() {
     };
   }, [allMessagesCopy, userId, ChatInfo._id, setNotifications]);
 
-  // fetching messages of a particular chat //
+  // Fetching messages for this chat
   useEffect(() => {
     setLoading(true);
     if (ChatInfo._id) {
@@ -250,7 +267,7 @@ export default function SingleChat() {
     }
   }, [navigate, ChatInfo._id, userId]);
 
-  // Fetch group info//
+  // Fetch group info
   useEffect(() => {
     setGroupLoading(true);
     const fetchData = async () => {
@@ -321,7 +338,7 @@ export default function SingleChat() {
     }
   };
 
-  // Listen for the "typing" event from other users
+  // Listen for "typing" event from other users
   useEffect(() => {
     socket.on("typing", (room) => {
       if (room === ChatInfo._id) {
@@ -348,6 +365,7 @@ export default function SingleChat() {
 
   return (
     <>
+      {/* Header Bar with Chat Info and Delete Chat Button */}
       <div className={"chatArea-header" + (lightTheme ? "" : " dark")}>
         <IconButton onClick={ChatInfo.isGroup ? showModal : null}>
           {ChatInfo.otherUserImage && !ChatInfo.isGroup ? (
@@ -372,14 +390,19 @@ export default function SingleChat() {
               : null}
           </p>
         </div>
-        <div>
-          {ChatInfo.isGroup ? (
-            <IconButton onClick={() => handleClickOpen()}>
+        <div className="header-actions">
+          {ChatInfo.isGroup && (
+            <IconButton onClick={handleClickOpen}>
               <LogoutIcon />
             </IconButton>
-          ) : null}
+          )}
+          {/* Delete Chat Button */}
+          <IconButton onClick={handleDeleteChat} title="Delete Chat">
+            <DeleteIcon style={{ color: "red" }} />
+          </IconButton>
         </div>
       </div>
+
       <div className={"messages-container" + (lightTheme ? "" : " dark")} ref={scrollableDivRef}>
         {showAlert && (
           <Alert
@@ -447,7 +470,7 @@ export default function SingleChat() {
           ) : (
             groupData && (
               <div>
-                {/* ADDED: Add Member Button Container inside Group Info */}
+                {/* Add Member Button Container inside Group Info */}
                 <div
                   style={{
                     display: "flex",
@@ -491,7 +514,6 @@ export default function SingleChat() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => { handleClose(); exitGroupChat(); }}>
-              {" "}
               Agree
             </Button>
             <Button onClick={handleClose} autoFocus>
@@ -505,7 +527,6 @@ export default function SingleChat() {
           className={"messages-container" + (lightTheme ? "" : " dark")}
           style={{ marginTop: "0", flex: 3 }}
         >
-          {" "}
           <EmojiPicker
             onEmojiClick={(e) => { setMessageContent((prev) => prev + e.emoji); }}
             width="100%"
@@ -515,7 +536,7 @@ export default function SingleChat() {
             emojiStyle="native"
             lazyLoadEmojis={false}
             autoFocusSearch={false}
-          />{" "}
+          />
         </div>
       ) : null}
       {showAddMember && (

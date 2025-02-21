@@ -1,8 +1,18 @@
-const express = require("express");
-const router = express.Router();
-const {allMessages, sendMessage} = require("../Controllers/messageControllers");
-const protect = require("../middleware/authMiddleWare");
-router.route("/:chatId").get(protect, allMessages);
-router.route("/").post(protect,sendMessage);
+// messageRoutes.js
 
-module.exports = router;
+import express from "express";
+import { allMessages, sendMessage, deleteMessage } from "../Controllers/messageControllers.js";
+import protect from "../middleware/authMiddleWare.js";
+
+const router = express.Router();
+
+// Route to fetch all messages for a chat
+router.route("/:chatId").get(protect, allMessages);
+
+// Route to send a new message
+router.route("/").post(protect, sendMessage);
+
+// New: DELETE route for soft deleting a message (adds user to deletedBy array)
+router.route("/:messageId").delete(protect, deleteMessage);
+
+export default router;

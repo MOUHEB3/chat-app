@@ -1,17 +1,17 @@
-const express = require("express");
-const multer = require("multer");
-const storage = multer.memoryStorage(); // Use memory storage, you can customize this according to your needs
+// userRoutes.js
+
+import express from "express";
+import multer from "multer";
+import { loginController, registerController, fetchAllUsersController } from "../Controllers/userControllers.js";
+import protect from "../middleware/authMiddleWare.js";
+
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-const {
-  loginController,
-  registerController,
-  fetchAllUsersController,
-} = require("../Controllers/userControllers");
+
 const Router = express.Router();
-const protect = require("../middleware/authMiddleWare");
 
 Router.post("/login", loginController);
-Router.post("/register",upload.single("image"), registerController);
+Router.post("/register", upload.single("image"), registerController);
 Router.get("/fetchUsers", protect, fetchAllUsersController);
 
-module.exports = Router;
+export default Router;

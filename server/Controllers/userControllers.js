@@ -1,14 +1,16 @@
-const express = require("express");
-const userModel = require("../Models/userModel");
-const Chat = require("../Models/chatModel"); // Import Chat model
-const handler = require("express-async-handler");
-const generateToken = require("../Config/generateToken");
+// userController.js
 
-const loginController = handler(async (req, res) => {
+import express from "express";
+import userModel from "../Models/userModel.js";
+import Chat from "../Models/chatModel.js"; // Import Chat model
+import handler from "express-async-handler";
+import { generateToken } from "../Config/generateToken.js";
+
+export const loginController = handler(async (req, res) => {
   const { name, password } = req.body;
   const user = await userModel.findOne({ name });
   if (user && (await user.matchPassword(password))) {
-    const imageBase64 = user.image ? user.image.toString('base64') : null;
+    const imageBase64 = user.image ? user.image.toString("base64") : null;
     const response = {
       _id: user._id,
       name: user.name,
@@ -24,7 +26,7 @@ const loginController = handler(async (req, res) => {
   }
 });
 
-const registerController = handler(async (req, res) => {
+export const registerController = handler(async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const image = req.file;
@@ -71,7 +73,7 @@ const registerController = handler(async (req, res) => {
   }
 });
 
-const fetchAllUsersController = handler(async (req, res) => {
+export const fetchAllUsersController = handler(async (req, res) => {
   const keyword = req.query.search
     ? {
         $or: [
@@ -88,7 +90,7 @@ const fetchAllUsersController = handler(async (req, res) => {
 });
 
 // Fetch users who are not in a specific group
-const fetchUsersNotInGroup = handler(async (req, res) => {
+export const fetchUsersNotInGroup = handler(async (req, res) => {
   const { groupId } = req.query; // Get groupId from query params
 
   if (!groupId) {
@@ -113,5 +115,3 @@ const fetchUsersNotInGroup = handler(async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
-module.exports = { registerController, loginController, fetchAllUsersController, fetchUsersNotInGroup };

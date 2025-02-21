@@ -6,9 +6,12 @@ import Avatar from "@mui/material/Avatar";
 import { RefreshContext } from "../App";
 import Badge from "@mui/material/Badge";
 import { useSelector } from "react-redux";
+import socket from "../socket";
 
 function ConversationsItem({ props }) {
   const [entryCount, setEntryCount] = useState(0);
+  // Local state to control whether this conversation should be visible
+  const [visible, setVisible] = useState(true);
   const lightTheme = useSelector((state) => state.themeKey);
   const navigate = useNavigate();
   const { setChatInfo, onlineUsers } = useContext(ChatContext);
@@ -18,17 +21,37 @@ function ConversationsItem({ props }) {
   const lastMessage = props.lastMessage || "start a new chat";
   const otherUserImage = props.otherUserImage;
 
+  // Update notification count for this conversation
   useEffect(() => {
     let count = 0;
-
     for (const key in notifications) {
       if (notifications[key].ChatId === props._id) {
         count++;
       }
     }
-
     setEntryCount(count);
-  }, [notifications, props._id]); // ✅ Added props._id as a dependency
+  }, [notifications, props._id]);
+
+  // Listen for real-time chat deletion events
+  useEffect(() => {
+    const handleChatDeleted = (data) => {
+      // If the deleted chat id matches this conversation's id, mark it as not visible.
+      if (data.chatId === props._id) {
+        setVisible(false);
+      }
+    };
+
+    socket.on("chatDeleted", handleChatDeleted);
+
+    return () => {
+      socket.off("chatDeleted", handleChatDeleted);
+    };
+  }, [props._id]);
+
+  // If conversation has been deleted, do not render anything.
+  if (!visible) {
+    return null;
+  }
 
   const removeNotification = (chatId) => {
     const updatedNotifications = notifications.filter(
@@ -58,7 +81,7 @@ function ConversationsItem({ props }) {
 
   return (
     <div
-      className={"conversation-container"}
+      className="conversation-container"
       onClick={() => {
         localStorage.setItem("conversations", JSON.stringify(props));
         setChatInfo(JSON.parse(localStorage.getItem("conversations")) || []);
@@ -73,18 +96,17 @@ function ConversationsItem({ props }) {
             width: 52,
             height: 52,
             borderRadius: 15,
-            border: onlineUsers.has(props.otherUser) ? "2px solid green" : null,
+            border: onlineUsers.has(props.otherUser)
+              ? "2px solid green"
+              : null,
           }}
           src={otherUserImage}
         />
       ) : (
-        <p className="con-icon">{iconName} </p>
+        <p className="con-icon">{iconName}</p>
       )}
 
-      <p
-        className="con-title"
-        style={{ color: lightTheme ? "black" : "white" }}
-      >
+      <p className="con-title" style={{ color: lightTheme ? "black" : "white" }}>
         {title}{" "}
       </p>
       <p
